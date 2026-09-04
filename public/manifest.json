@@ -1,0 +1,11 @@
+{
+  "name": "SahAIbat Bidan",
+  "short_name": "Bidan",
+  "description": "Dokumentasi ANC & PNC — bekerja tanpa sinyal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D1F1C",
+  "theme_color": "#0D1F1C",
+  "orientation": "portrait",
+  "icons": []
+}
