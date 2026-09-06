@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import PasscodeGate from '@/components/PasscodeGate';
 
 export const metadata: Metadata = {
   title: 'SahAIbat Bidan',
@@ -21,7 +22,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ margin: 0, background: '#0D1F1C', color: '#fff',
         fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
         WebkitFontSmoothing: 'antialiased', minHeight: '100dvh' }}>
-        {children}
+        {/* Wraps everything rather than living at a route: a lock you can
+            navigate around by typing a URL is not a lock, and a shared
+            handset is the whole reason this exists. */}
+        <PasscodeGate>{children}</PasscodeGate>
       </body>
     </html>
   );

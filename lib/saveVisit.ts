@@ -7,9 +7,13 @@
 // say; and if the rules change next month, an old visit keeps the assessment
 // that was actually made at the time.
 
-import { score10T, generateClinicalFlags, shouldRefer } from '@sahaibat/anc-engine';
+import {
+  score10T, generateClinicalFlags, shouldRefer,
+  generatePncFlags, shouldReferPnc,
+} from '@sahaibat/anc-engine';
 import { saveVisit as put, generateLocalId, type QueuedVisit } from './offlineStore';
 import { toEngineInputs, type AncFormValues } from '../components/AncForm';
+import { toPncInput, type PncFormValues } from '../components/PncForm';
 import type { BidanIdentity } from './auth';
 
 export async function saveAncVisit(args: {
@@ -41,6 +45,43 @@ export async function saveAncVisit(args: {
     // to the form later is not lost by an older client.
     data: { ...values },
     qualityScore: quality.score,
+    flags: flags.map((f) => ({ type: f.type, severity: f.severity })),
+    referNow: referral.refer,
+    createdAt: new Date().toISOString(),
+    syncStatus: 'pending',
+  };
+
+  await put(record);
+  return record;
+}
+
+export async function savePncVisit(args: {
+  identity: BidanIdentity;
+  memberId: string | null;
+  motherName: string;
+  values: PncFormValues;
+}): Promise<QueuedVisit> {
+  const { identity, memberId, motherName, values } = args;
+  const input = toPncInput(values);
+
+  // Same engine as the server and the WhatsApp path, run here so the flags
+  // stored are the ones she actually saw. There is no 10T equivalent for
+  // postnatal care, so qualityScore stays null rather than inventing a number.
+  const flags = generatePncFlags(input as any);
+  const referral = shouldReferPnc(flags);
+
+  const record: QueuedVisit = {
+    localId: generateLocalId(),
+    profileId: identity.profileId,
+    ngoId: identity.ngoId,
+    memberId,
+    flow: 'pnc',
+    visitType: values.visitType,
+    motherName,
+    gestationalWeeks: null,
+    daysPostpartum: input.daysPostpartum,
+    data: { ...values, ...input },
+    qualityScore: null,
     flags: flags.map((f) => ({ type: f.type, severity: f.severity })),
     referNow: referral.refer,
     createdAt: new Date().toISOString(),

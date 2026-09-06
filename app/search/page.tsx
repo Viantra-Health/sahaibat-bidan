@@ -6,6 +6,7 @@ import { getIdentity, type BidanIdentity } from '@/lib/auth';
 import { getRegister, type RegisterRecord } from '@/lib/offlineStore';
 import { syncRegister } from '@/lib/syncClient';
 import { searchRegister, describeRecord, describeLastSeen, type SearchFilters } from '@/lib/search';
+import PasscodePrompt from '@/components/PasscodePrompt';
 
 const C = {
   teal: '#02C39A',
@@ -90,35 +91,61 @@ export default function SearchPage() {
         <Chip on={recentOnly} onClick={() => setRecentOnly((v) => !v)} label="3 bln terakhir" />
       </div>
 
+      <PasscodePrompt />
+
       {status && (
         <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.5, marginBottom: 16 }}>{status}</p>
       )}
 
       {query.trim() && (
         <>
+          {/* Two destinations per person, both one tap. Which visit she is
+              doing is something she knows and the register does not — a
+              woman who delivered last week is no longer flagged pregnant,
+              and guessing from that would send half the postnatal visits to
+              the wrong form. The wider target stays antenatal because that
+              is the commoner case. */}
           {outcome.hits.map(({ record, why }) => (
-            <button
+            <div
               key={record.memberId}
-              onClick={() => router.push(`/anc/${record.memberId}`)}
               style={{
-                width: '100%', textAlign: 'left', marginBottom: 9, padding: '12px 14px',
-                borderRadius: 11, background: C.card, cursor: 'pointer',
+                marginBottom: 9, borderRadius: 11, background: C.card,
                 border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.teal}`,
-                display: 'flex', flexDirection: 'column', gap: 3, color: C.white,
+                display: 'flex', alignItems: 'stretch', overflow: 'hidden',
               }}
             >
-              <span style={{ fontWeight: 700, fontSize: 15 }}>{record.name}</span>
-              <span style={{ fontSize: 12.5, color: C.dim }}>{describeRecord(record)}</span>
-              {describeLastSeen(record) && (
-                <span style={{ fontSize: 11.5, color: C.dimmer }}>{describeLastSeen(record)}</span>
-              )}
-              {why.length > 0 && (
-                <span style={{ fontSize: 10, color: C.teal, letterSpacing: '.07em',
-                  textTransform: 'uppercase', fontWeight: 700, marginTop: 1 }}>
-                  {why.join(' · ')}
-                </span>
-              )}
-            </button>
+              <button
+                onClick={() => router.push(`/anc/${record.memberId}`)}
+                style={{
+                  flex: 1, textAlign: 'left', padding: '12px 14px', background: 'none',
+                  border: 'none', cursor: 'pointer', color: C.white,
+                  display: 'flex', flexDirection: 'column', gap: 3,
+                }}
+              >
+                <span style={{ fontWeight: 700, fontSize: 15 }}>{record.name}</span>
+                <span style={{ fontSize: 12.5, color: C.dim }}>{describeRecord(record)}</span>
+                {describeLastSeen(record) && (
+                  <span style={{ fontSize: 11.5, color: C.dimmer }}>{describeLastSeen(record)}</span>
+                )}
+                {why.length > 0 && (
+                  <span style={{ fontSize: 10, color: C.teal, letterSpacing: '.07em',
+                    textTransform: 'uppercase', fontWeight: 700, marginTop: 1 }}>
+                    {why.join(' · ')}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => router.push(`/pnc/${record.memberId}`)}
+                aria-label={`Kunjungan nifas untuk ${record.name}`}
+                style={{
+                  width: 74, background: 'rgba(255,255,255,0.04)', border: 'none',
+                  borderLeft: `1px solid ${C.border}`, color: C.dim,
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: '.04em',
+                }}
+              >
+                Nifas
+              </button>
+            </div>
           ))}
 
           {/* Never truncate silently: a midwife who cannot see that more exist

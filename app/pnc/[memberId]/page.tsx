@@ -4,44 +4,30 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
 import { getRegisterRecord, type RegisterRecord } from '@/lib/offlineStore';
-import { saveAncVisit } from '@/lib/saveVisit';
+import { savePncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
-import AncForm, { EMPTY_FORM, toEngineInputs, type AncFormValues } from '@/components/AncForm';
+import PncForm, { EMPTY_PNC, toPncInput, type PncFormValues } from '@/components/PncForm';
 import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
-import { generateClinicalFlags } from '@sahaibat/anc-engine';
+import { generatePncFlags, shouldReferPnc } from '@sahaibat/anc-engine';
 
-/** Weeks elapsed of a 40-week pregnancy, derived from EDD. Saves her retyping
- *  a number the register already knows — and a wrong gestational age silently
- *  changes which 10T items are expected and whether malpresentation flags. */
-function weeksFromEdd(edd: string | null): string {
-  if (!edd) return '';
-  const due = new Date(edd).getTime();
-  if (!Number.isFinite(due)) return '';
-  const weeksRemaining = (due - Date.now()) / (7 * 86_400_000);
-  const gw = Math.round(40 - weeksRemaining);
-  return gw > 0 && gw <= 45 ? String(gw) : '';
-}
-
-export default function AncVisitPage() {
+export default function PncVisitPage() {
   const router = useRouter();
   const { memberId } = useParams<{ memberId: string }>();
 
   const [identity, setIdentity] = useState<BidanIdentity | null>(null);
   const [record, setRecord] = useState<RegisterRecord | null>(null);
-  const [values, setValues] = useState<AncFormValues>(EMPTY_FORM);
+  const [values, setValues] = useState<PncFormValues>(EMPTY_PNC);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState<{ score: number; refer: boolean } | null>(null);
+  const [saved, setSaved] = useState<{ refer: boolean; urgency: string } | null>(null);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     const id = getIdentity();
     if (!id) { router.replace('/'); return; }
     setIdentity(id);
-
     getRegisterRecord(memberId).then((r) => {
       if (!r) { setNotFound(true); return; }
       setRecord(r);
-      setValues((v) => ({ ...v, gestationalWeeks: weeksFromEdd(r.edd) }));
     });
   }, [memberId, router]);
 
@@ -49,49 +35,47 @@ export default function AncVisitPage() {
     if (!identity || !record || saving) return;
     setSaving(true);
     try {
-      const visit = await saveAncVisit({
+      const visit = await savePncVisit({
         identity,
-        memberId: record.memberId,   // a confirmed identity stays confirmed
+        memberId: record.memberId,
         motherName: record.name,
-        motherAge: record.ageYears,
         values,
       });
-      setSaved({ score: visit.qualityScore ?? 0, refer: !!visit.referNow });
-      // Best-effort. The visit is already durable in IndexedDB, so a failure
-      // here changes nothing except when it reaches the dashboard.
+      const flags = generatePncFlags(toPncInput(values) as any);
+      setSaved({ refer: !!visit.referNow, urgency: shouldReferPnc(flags).urgency });
       syncPendingVisits().catch(() => {});
     } finally {
       setSaving(false);
     }
   }
 
-  // Rung 4 of the referral ladder: a letter she carries. Needs no network, no
-  // provider on the platform, and nobody at the other end who has heard of us.
+  // Rung 4 of the referral ladder: a letter she can hand over. It needs no
+  // network, no provider on the platform and nobody at the other end who has
+  // heard of us — which is what actually happens in rural Indonesia.
   function handleLetter() {
     if (!record || !identity) return;
-    const { clinical } = toEngineInputs(values, record.ageYears);
-    const flags = generateClinicalFlags(clinical as any);
+    const flags = generatePncFlags(toPncInput(values) as any);
     shareReferralLetter(buildReferralLetter({
-      kind: 'anc',
+      kind: 'pnc',
       patientName: record.name,
       ageYears: record.ageYears,
       village: record.village,
       bidanName: identity.name,
       facility: identity.village,
       visitType: values.visitType,
-      context: values.gestationalWeeks ? `Usia kehamilan ${values.gestationalWeeks} minggu` : null,
+      context: values.daysPostpartum ? `Hari ke-${values.daysPostpartum} pascasalin` : null,
       findings: [
         values.bpSystolic && values.bpDiastolic ? `TD ${values.bpSystolic}/${values.bpDiastolic} mmHg` : null,
-        values.labHb ? `Hb ${values.labHb} g/dL` : null,
-        values.labProtein ? `Protein urin ${values.labProtein}` : null,
-        values.lilaCm ? `LILA ${values.lilaCm} cm` : null,
-        values.djjBpm ? `DJJ ${values.djjBpm} x/menit` : null,
-        values.fundalHeightCm ? `TFU ${values.fundalHeightCm} cm` : null,
-        values.presentation ? `Presentasi ${values.presentation}` : null,
+        values.temperatureC ? `Suhu ${values.temperatureC} °C` : null,
+        values.bleeding === 'high' ? 'Perdarahan banyak' : null,
+        values.lochiaFoul ? 'Lokia berbau' : null,
+        values.woundInfected ? 'Luka terinfeksi' : null,
+        values.babyWeightKg ? `Berat bayi ${values.babyWeightKg} kg` : null,
+        values.epdsScore ? `EPDS ${values.epdsScore}/30` : null,
         values.complaints || null,
       ].filter(Boolean) as string[],
       reasons: flags.filter((f) => f.referral).map((f) => f.message_id),
-    }), record.name);
+    }));
   }
 
   if (notFound) {
@@ -111,9 +95,9 @@ export default function AncVisitPage() {
     return (
       <main style={wrap}>
         <div style={{ fontSize: 34, marginBottom: 10 }}>✅</div>
-        <h1 style={{ fontSize: 21, margin: '0 0 6px' }}>Kunjungan tersimpan</h1>
+        <h1 style={{ fontSize: 21, margin: '0 0 6px' }}>Kunjungan nifas tersimpan</h1>
         <p style={{ color: 'rgba(255,255,255,.6)', margin: '0 0 4px', lineHeight: 1.6 }}>
-          {record.name} · {values.visitType} · skor 10T {saved.score}/10
+          {record.name} · {values.visitType} · hari ke-{values.daysPostpartum || '?'}
         </p>
         <p style={{ color: 'rgba(255,255,255,.4)', fontSize: 13, lineHeight: 1.6 }}>
           Tersimpan di perangkat. Akan terkirim otomatis saat ada sinyal.
@@ -121,7 +105,9 @@ export default function AncVisitPage() {
         {saved.refer && (
           <>
             <p style={{ color: '#FF6B6B', fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
-              Rujukan dibuat — pastikan ibu dirujuk hari ini.
+              {saved.urgency === 'emergency'
+                ? 'RUJUKAN DARURAT — dampingi ibu sekarang.'
+                : 'Rujukan dibuat — pastikan ibu dirujuk hari ini.'}
             </p>
             <button onClick={handleLetter} style={letterBtn}>📄 Buat surat rujukan</button>
           </>
@@ -134,7 +120,6 @@ export default function AncVisitPage() {
   const subtitle = [
     record.ageYears != null ? `${record.ageYears} th` : null,
     record.village,
-    record.edd ? `HPL ${record.edd}` : null,
   ].filter(Boolean).join(' · ');
 
   return (
@@ -144,9 +129,8 @@ export default function AncVisitPage() {
         fontSize: 13, padding: 0, marginBottom: 14, cursor: 'pointer',
       }}>← Kembali</button>
 
-      <AncForm
+      <PncForm
         motherName={record.name}
-        motherAge={record.ageYears}
         subtitle={subtitle}
         values={values}
         onChange={setValues}
@@ -161,12 +145,12 @@ const wrap: React.CSSProperties = {
   padding: 24, maxWidth: 420, margin: '0 auto', minHeight: '100dvh',
   display: 'flex', flexDirection: 'column', justifyContent: 'center',
 };
+const backBtn: React.CSSProperties = {
+  marginTop: 20, padding: 14, borderRadius: 11, background: '#02C39A',
+  color: '#04241E', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer',
+};
 const letterBtn: React.CSSProperties = {
   marginTop: 14, padding: 13, borderRadius: 11, background: 'transparent',
   color: '#FFFFFF', fontWeight: 600, fontSize: 14.5,
   border: '1px solid rgba(255,107,107,.6)', cursor: 'pointer',
-};
-const backBtn: React.CSSProperties = {
-  marginTop: 20, padding: 14, borderRadius: 11, background: '#02C39A',
-  color: '#04241E', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer',
 };

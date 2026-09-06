@@ -21,6 +21,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
     additionalManifestEntries: [
       { url: "/", revision: BUILD_REV },
       { url: "/search", revision: BUILD_REV },
+      { url: "/pnc/baru", revision: BUILD_REV },
       { url: "/offline", revision: BUILD_REV },
     ],
     navigateFallbackDenylist: [/^\/api\//],
