@@ -31,6 +31,10 @@ export interface AncFormValues {
   bloodSugarMg: string; malariaRdt: string;
   counselling: string; presentation: string;
   caseManagement: string; followupPlan: string; complaints: string;
+  // P4K — Perencanaan Persalinan dan Pencegahan Komplikasi. The engine has
+  // parsed these from WhatsApp all along and nothing has ever displayed them.
+  p4kFasilitas: string; p4kTransportasi: string; p4kDonorDarah: string;
+  p4kPendanaan: string; p4kPendamping: string;
 }
 
 export const EMPTY_FORM: AncFormValues = {
@@ -42,6 +46,8 @@ export const EMPTY_FORM: AncFormValues = {
   bloodSugarMg: '', malariaRdt: '',
   counselling: '', presentation: '',
   caseManagement: '', followupPlan: '', complaints: '',
+  p4kFasilitas: '', p4kTransportasi: '', p4kDonorDarah: '',
+  p4kPendanaan: '', p4kPendamping: '',
 };
 
 const num = (s: string): number | null => {
@@ -93,10 +99,37 @@ export function toEngineInputs(v: AncFormValues, motherAge: number | null) {
     bloodSugarMg: num(v.bloodSugarMg),
     malariaRdt: v.malariaRdt || null,
     usgResults: null,
-    birthPlan: null,
+    // Null when she has filled nothing — the rules distinguish "no plan yet"
+    // from "a plan missing its transport", and collapsing that into an object
+    // of nulls would silence NO_BIRTH_PLAN entirely.
+    birthPlan: birthPlanOf(v),
   };
 
   return { visit, clinical, bmi };
+}
+
+/** P4K, or null when nothing has been arranged yet. */
+export function birthPlanOf(v: AncFormValues) {
+  const plan = {
+    fasilitas: v.p4kFasilitas || null,
+    transportasi: v.p4kTransportasi || null,
+    donorDarah: v.p4kDonorDarah || null,
+    pendanaan: v.p4kPendanaan || null,
+    pendamping: v.p4kPendamping || null,
+    catatan: null as string | null,
+  };
+  return Object.values(plan).some(Boolean) ? plan : null;
+}
+
+/** What is still unarranged, for the checklist. */
+export function p4kMissing(v: AncFormValues): string[] {
+  const missing: string[] = [];
+  if (!v.p4kFasilitas) missing.push('tempat bersalin');
+  if (!v.p4kTransportasi) missing.push('transportasi');
+  if (!v.p4kPendanaan) missing.push('pembiayaan');
+  if (!v.p4kDonorDarah) missing.push('calon donor darah');
+  if (!v.p4kPendamping) missing.push('pendamping');
+  return missing;
 }
 
 interface Props {
@@ -123,6 +156,7 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
 
   const emergencies = flags.filter(f => f.severity === 'EMERGENCY');
   const warnings = flags.filter(f => f.severity === 'WARNING');
+  const p4kOutstanding = p4kMissing(values);
 
   return (
     <div style={{ paddingBottom: 120 }}>
@@ -247,6 +281,33 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         <Field label="Keluhan" value={values.complaints} onChange={set('complaints')}
           placeholder="jika ada" />
       </Section>
+
+      {/* P4K — the birth plan. Shown from 28 weeks, because before that the
+          answers are guesses; emphasised from 36, because a mother with no
+          transport arranged at 36 weeks is the one who dies on the way. */}
+      {gw >= 28 && (
+        <Section title="P4K · Rencana Persalinan">
+          <Select label="Tempat bersalin" value={values.p4kFasilitas} onChange={set('p4kFasilitas')}
+            options={['', 'Puskesmas', 'Rumah sakit', 'Poskesdes', 'Klinik', 'Bidan praktik', 'Rumah']} />
+          <Select label="Transportasi" value={values.p4kTransportasi} onChange={set('p4kTransportasi')}
+            options={['', 'Ambulans', 'Mobil', 'Motor', 'Ojek', 'Angkot', 'Lainnya']} />
+          <Select label="Pembiayaan" value={values.p4kPendanaan} onChange={set('p4kPendanaan')}
+            options={['', 'BPJS', 'Jampersal', 'KIS', 'Tabungan', 'Mandiri', 'Lainnya']} />
+          <Row>
+            <Field label="Calon donor darah" value={values.p4kDonorDarah}
+              onChange={set('p4kDonorDarah')} placeholder="nama / gol." />
+            <Field label="Pendamping" value={values.p4kPendamping}
+              onChange={set('p4kPendamping')} placeholder="suami / keluarga" />
+          </Row>
+          {p4kOutstanding.length > 0 && (
+            <Hint warn={gw >= 36}>
+              Belum disiapkan: {p4kOutstanding.join(', ')}.
+              {gw >= 36 ? ' Ibu sudah ≥36 minggu — lengkapi sekarang.' : ''}
+            </Hint>
+          )}
+          {p4kOutstanding.length === 0 && <Hint>Rencana persalinan lengkap.</Hint>}
+        </Section>
+      )}
 
       {warnings.length > 0 && (
         <div style={{

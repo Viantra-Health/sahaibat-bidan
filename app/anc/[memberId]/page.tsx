@@ -42,7 +42,18 @@ export default function AncVisitPage() {
     getRegisterRecord(memberId).then((r) => {
       if (!r) { setNotFound(true); return; }
       setRecord(r);
-      setValues((v) => ({ ...v, gestationalWeeks: weeksFromEdd(r.edd) }));
+      // Carry P4K forward. What was arranged at K3 is still arranged at K4,
+      // and re-asking every visit is how a checklist stops being filled.
+      const bp = r.birthPlan;
+      setValues((v) => ({
+        ...v,
+        gestationalWeeks: weeksFromEdd(r.edd),
+        p4kFasilitas: bp?.fasilitas ?? '',
+        p4kTransportasi: bp?.transportasi ?? '',
+        p4kDonorDarah: bp?.donorDarah ?? '',
+        p4kPendanaan: bp?.pendanaan ?? '',
+        p4kPendamping: bp?.pendamping ?? '',
+      }));
     });
   }, [memberId, router]);
 

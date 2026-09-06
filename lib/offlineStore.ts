@@ -67,6 +67,11 @@ export interface RegisterRecord {
   motherName: string | null;
   isPregnant: boolean;
   edd: string | null;
+  /** Last recorded P4K, so the checklist carries forward between visits. */
+  birthPlan: {
+    fasilitas: string | null; transportasi: string | null; donorDarah: string | null;
+    pendanaan: string | null; pendamping: string | null; catatan: string | null;
+  } | null;
   nikLast4: string | null;
   phoneLast4: string | null;
   lastSeenAt: string | null;
