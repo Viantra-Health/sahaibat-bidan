@@ -17,6 +17,7 @@ import { savePncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
 import PncForm, { EMPTY_PNC, toPncInput, type PncFormValues } from '@/components/PncForm';
 import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
+import ReferralPanel from '@/components/ReferralPanel';
 import { generatePncFlags, shouldReferPnc } from '@sahaibat/anc-engine';
 import { C } from '@/components/ui';
 
@@ -129,7 +130,11 @@ export default function NewPncPage() {
                 ? 'RUJUKAN DARURAT — dampingi ibu sekarang.'
                 : 'Rujukan dibuat — pastikan ibu dirujuk hari ini.'}
             </p>
-            <button onClick={handleLetter} style={letterBtn}>📄 Buat surat rujukan</button>
+            <ReferralPanel
+              profileId={identity.profileId}
+              urgency={saved.urgency as any}
+              onLetter={handleLetter}
+            />
           </>
         )}
         <button onClick={() => router.replace('/search')} style={primaryBtn}>Selesai</button>
@@ -216,9 +221,4 @@ const primaryBtn: React.CSSProperties = {
 const linkBtn: React.CSSProperties = {
   background: 'none', border: 'none', color: 'rgba(255,255,255,.5)',
   fontSize: 13, padding: 0, marginBottom: 14, cursor: 'pointer',
-};
-const letterBtn: React.CSSProperties = {
-  marginTop: 14, padding: 13, borderRadius: 11, background: 'transparent',
-  color: '#FFFFFF', fontWeight: 600, fontSize: 14.5,
-  border: '1px solid rgba(255,107,107,.6)', cursor: 'pointer',
 };

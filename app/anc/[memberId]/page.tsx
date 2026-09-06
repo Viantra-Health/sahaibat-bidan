@@ -8,7 +8,8 @@ import { saveAncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
 import AncForm, { EMPTY_FORM, toEngineInputs, type AncFormValues } from '@/components/AncForm';
 import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
-import { generateClinicalFlags } from '@sahaibat/anc-engine';
+import ReferralPanel from '@/components/ReferralPanel';
+import { generateClinicalFlags, shouldRefer } from '@sahaibat/anc-engine';
 
 /** Weeks elapsed of a 40-week pregnancy, derived from EDD. Saves her retyping
  *  a number the register already knows — and a wrong gestational age silently
@@ -30,7 +31,7 @@ export default function AncVisitPage() {
   const [record, setRecord] = useState<RegisterRecord | null>(null);
   const [values, setValues] = useState<AncFormValues>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState<{ score: number; refer: boolean } | null>(null);
+  const [saved, setSaved] = useState<{ score: number; refer: boolean; urgency: string } | null>(null);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -56,7 +57,9 @@ export default function AncVisitPage() {
         motherAge: record.ageYears,
         values,
       });
-      setSaved({ score: visit.qualityScore ?? 0, refer: !!visit.referNow });
+      const { clinical } = toEngineInputs(values, record.ageYears);
+      const urgency = shouldRefer(generateClinicalFlags(clinical as any)).urgency;
+      setSaved({ score: visit.qualityScore ?? 0, refer: !!visit.referNow, urgency });
       // Best-effort. The visit is already durable in IndexedDB, so a failure
       // here changes nothing except when it reaches the dashboard.
       syncPendingVisits().catch(() => {});
@@ -123,7 +126,11 @@ export default function AncVisitPage() {
             <p style={{ color: '#FF6B6B', fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
               Rujukan dibuat — pastikan ibu dirujuk hari ini.
             </p>
-            <button onClick={handleLetter} style={letterBtn}>📄 Buat surat rujukan</button>
+            <ReferralPanel
+              profileId={identity.profileId}
+              urgency={saved.urgency as any}
+              onLetter={handleLetter}
+            />
           </>
         )}
         <button onClick={() => router.replace('/search')} style={backBtn}>Selesai</button>
@@ -160,11 +167,6 @@ export default function AncVisitPage() {
 const wrap: React.CSSProperties = {
   padding: 24, maxWidth: 420, margin: '0 auto', minHeight: '100dvh',
   display: 'flex', flexDirection: 'column', justifyContent: 'center',
-};
-const letterBtn: React.CSSProperties = {
-  marginTop: 14, padding: 13, borderRadius: 11, background: 'transparent',
-  color: '#FFFFFF', fontWeight: 600, fontSize: 14.5,
-  border: '1px solid rgba(255,107,107,.6)', cursor: 'pointer',
 };
 const backBtn: React.CSSProperties = {
   marginTop: 20, padding: 14, borderRadius: 11, background: '#02C39A',

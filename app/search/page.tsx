@@ -7,6 +7,7 @@ import { getRegister, type RegisterRecord } from '@/lib/offlineStore';
 import { syncRegister } from '@/lib/syncClient';
 import { searchRegister, describeRecord, describeLastSeen, type SearchFilters } from '@/lib/search';
 import PasscodePrompt from '@/components/PasscodePrompt';
+import { refreshTargets } from '@/lib/referralTargets';
 
 const C = {
   teal: '#02C39A',
@@ -41,6 +42,11 @@ export default function SearchPage() {
       if (r.reason) setStatus(r.reason);
       else if (r.count === 0) setStatus('Daftar warga kosong untuk desa Anda.');
     });
+
+    // Referral targets, cached before the first referral rather than during
+    // one. Independent of the register sync: if that fails she should still
+    // have somewhere to send a mother.
+    refreshTargets(id.profileId).catch(() => {});
   }, [router]);
 
   const filters: SearchFilters = useMemo(() => ({

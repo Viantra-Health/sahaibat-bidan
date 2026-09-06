@@ -18,7 +18,10 @@ import { normalisePhone } from '@sahaibat/identity';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
 import { saveAncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
-import AncForm, { EMPTY_FORM, type AncFormValues } from '@/components/AncForm';
+import AncForm, { EMPTY_FORM, toEngineInputs, type AncFormValues } from '@/components/AncForm';
+import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
+import ReferralPanel from '@/components/ReferralPanel';
+import { generateClinicalFlags, shouldRefer } from '@sahaibat/anc-engine';
 
 const C = { teal: '#02C39A', dim: 'rgba(255,255,255,0.55)', border: 'rgba(2,195,154,0.28)', red: '#FF6B6B' };
 
@@ -44,7 +47,7 @@ export default function NewMotherPage() {
 
   const [values, setValues] = useState<AncFormValues>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState<{ score: number; refer: boolean } | null>(null);
+  const [saved, setSaved] = useState<{ score: number; refer: boolean; urgency: string } | null>(null);
 
   useEffect(() => {
     const id = getIdentity();
@@ -80,11 +83,39 @@ export default function NewMotherPage() {
       const { saveVisit } = await import('@/lib/offlineStore');
       await saveVisit(visit);
 
-      setSaved({ score: visit.qualityScore ?? 0, refer: !!visit.referNow });
+      const { clinical } = toEngineInputs(values, age);
+      const urgency = shouldRefer(generateClinicalFlags(clinical as any)).urgency;
+      setSaved({ score: visit.qualityScore ?? 0, refer: !!visit.referNow, urgency });
       syncPendingVisits().catch(() => {});
     } finally {
       setSaving(false);
     }
+  }
+
+  // Rung 4: needs no network, no provider, nobody at the other end.
+  function handleLetter() {
+    if (!identity) return;
+    const { clinical } = toEngineInputs(values, age);
+    const flags = generateClinicalFlags(clinical as any);
+    shareReferralLetter(buildReferralLetter({
+      kind: 'anc',
+      patientName: name.trim(),
+      ageYears: age,
+      village: identity.village,
+      bidanName: identity.name,
+      facility: identity.village,
+      visitType: values.visitType,
+      context: values.gestationalWeeks ? `Usia kehamilan ${values.gestationalWeeks} minggu` : null,
+      findings: [
+        values.bpSystolic && values.bpDiastolic ? `TD ${values.bpSystolic}/${values.bpDiastolic} mmHg` : null,
+        values.labHb ? `Hb ${values.labHb} g/dL` : null,
+        values.labProtein ? `Protein urin ${values.labProtein}` : null,
+        values.lilaCm ? `LILA ${values.lilaCm} cm` : null,
+        values.djjBpm ? `DJJ ${values.djjBpm} x/menit` : null,
+        values.complaints || null,
+      ].filter(Boolean) as string[],
+      reasons: flags.filter((f) => f.referral).map((f) => f.message_id),
+    }), name.trim());
   }
 
   if (!identity) return null;
@@ -101,9 +132,16 @@ export default function NewMotherPage() {
           Ibu baru akan dicocokkan dengan data pusat saat sinkronisasi.
         </p>
         {saved.refer && (
-          <p style={{ color: C.red, fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
-            Rujukan dibuat — pastikan ibu dirujuk hari ini.
-          </p>
+          <>
+            <p style={{ color: C.red, fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
+              Rujukan dibuat — pastikan ibu dirujuk hari ini.
+            </p>
+            <ReferralPanel
+              profileId={identity.profileId}
+              urgency={saved.urgency as any}
+              onLetter={handleLetter}
+            />
+          </>
         )}
         <button onClick={() => router.replace('/search')} style={primaryBtn}>Selesai</button>
       </main>
