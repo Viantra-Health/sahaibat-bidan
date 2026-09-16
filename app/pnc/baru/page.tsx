@@ -38,6 +38,7 @@ export default function NewPncPage() {
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
   const [phone, setPhone] = useState('');
+  const [kasihOptIn, setKasihOptIn] = useState(false);
   const [error, setError] = useState('');
 
   const [values, setValues] = useState<PncFormValues>(EMPTY_PNC);
@@ -74,7 +75,12 @@ export default function NewPncPage() {
       });
       visit.data = {
         ...visit.data,
-        _register: { name: name.trim(), dob: dob || null, phone: normalisePhone(phone) },
+        _register: {
+          name: name.trim(), dob: dob || null, phone: normalisePhone(phone),
+          // Only ever true when she actually ticked it. The server treats
+          // anything else as no consent.
+          kasihOptIn: kasihOptIn && !!normalisePhone(phone),
+        },
       };
       const { saveVisit } = await import('@/lib/offlineStore');
       await saveVisit(visit);
@@ -167,6 +173,38 @@ export default function NewPncPage() {
           {t('Nomor membantu menghubungkan ibu dengan catatan Kader dan layanan Kasih. Boleh dikosongkan.',
               'The number links her to Kader records and the Kasih service. It may be left blank.')}
         </p>
+
+        {/* Only once a number exists — an opt-in with nothing to send to is a
+            checkbox that does nothing. Unticked by default and it must stay
+            that way: enrolling a mother into a messaging service she did not
+            choose is a consent problem before it is a growth problem, and her
+            number plus her pregnancy is sensitive personal data under the PDP
+            law. */}
+        {!!normalisePhone(phone) && (
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={kasihOptIn}
+            onClick={() => setKasihOptIn((v) => !v)}
+            style={{
+              display: 'flex', gap: 10, alignItems: 'flex-start', width: '100%',
+              textAlign: 'left', padding: '12px 13px', borderRadius: 10, marginBottom: 18,
+              background: kasihOptIn ? 'rgba(2,195,154,0.10)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${kasihOptIn ? C.teal : C.border}`, cursor: 'pointer',
+            }}
+          >
+            <span style={{
+              width: 17, height: 17, borderRadius: 4, flex: '0 0 auto', marginTop: 1,
+              border: `1.5px solid ${kasihOptIn ? C.teal : 'rgba(255,255,255,0.4)'}`,
+              background: kasihOptIn ? C.teal : 'transparent',
+              color: '#04241E', fontSize: 12, fontWeight: 800, lineHeight: '15px', textAlign: 'center',
+            }}>{kasihOptIn ? '✓' : ''}</span>
+            <span style={{ fontSize: 12.5, lineHeight: 1.5, color: '#fff' }}>
+              {t('Daftarkan ibu ke Kasih — pengingat kehamilan dan info kesehatan lewat WhatsApp, gratis.',
+                  'Enrol her in Kasih — pregnancy reminders and health information over WhatsApp, free.')}
+            </span>
+          </button>
+        )}
 
         {error && <p style={{ color: C.red, fontSize: 13.5, marginBottom: 14 }}>{error}</p>}
 

@@ -33,7 +33,7 @@ export default function AppHeader({
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
         <img
-          src="/icons/icon-192.png"
+          src="/icons/icon-192.png?v=2"
           alt=""
           width={28}
           height={28}

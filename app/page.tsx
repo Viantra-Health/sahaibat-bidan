@@ -107,7 +107,7 @@ export default function LoginPage() {
     <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column',
       justifyContent: 'center', padding: 24, maxWidth: 420, margin: '0 auto' }}>
       <div style={{ marginBottom: 32 }}>
-        <img src="/icons/icon-192.png" alt="" width={44} height={44}
+        <img src="/icons/icon-192.png?v=2" alt="" width={44} height={44}
              style={{ borderRadius: 11, display: 'block', marginBottom: 12 }} />
         <h1 style={{ fontSize: 26, margin: '0 0 6px', letterSpacing: '-0.02em' }}>
           SahAIbat <span style={{ color: C.teal }}>Bidan</span>
