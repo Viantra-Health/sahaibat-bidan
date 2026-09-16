@@ -7,10 +7,16 @@ export const metadata: Metadata = {
   description: 'Dokumentasi ANC & PNC — bekerja tanpa sinyal',
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Bidan' },
+  // iOS ignores the manifest icons and reads this instead, which is why an
+  // iPhone home screen otherwise shows a screenshot of the page.
+  icons: {
+    icon: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180' }],
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0D1F1C',
+  themeColor: '#0F6E56',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
