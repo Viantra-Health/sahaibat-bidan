@@ -11,6 +11,8 @@ import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
 import { generateClinicalFlags, shouldRefer } from '@sahaibat/anc-engine';
 import { ancPlausible, ancImplausibleReason } from '@/lib/search';
+import { useLang } from '@/lib/lang';
+import AppHeader from '@/components/AppHeader';
 
 /** Weeks elapsed of a 40-week pregnancy, derived from EDD. Saves her retyping
  *  a number the register already knows — and a wrong gestational age silently
@@ -32,6 +34,7 @@ export default function AncVisitPage() {
   const [record, setRecord] = useState<RegisterRecord | null>(null);
   const [values, setValues] = useState<AncFormValues>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const { t } = useLang();
   const [saved, setSaved] = useState<{ score: number; refer: boolean; urgency: string } | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -114,7 +117,8 @@ export default function AncVisitPage() {
     return (
       <main style={wrap}>
         <p style={{ color: 'rgba(255,255,255,.6)', lineHeight: 1.6 }}>
-          Ibu ini tidak ada di data lokal perangkat. Coba cari lagi, atau daftarkan baru.
+          {t('Ibu ini tidak ada di data lokal perangkat. Coba cari lagi, atau daftarkan baru.',
+              'She is not in this device’s local data. Search again, or register her as new.')}
         </p>
         <button onClick={() => router.replace('/search')} style={backBtn}>← Kembali ke pencarian</button>
       </main>
@@ -133,14 +137,14 @@ export default function AncVisitPage() {
     return (
       <main style={wrap}>
         <div style={{ fontSize: 30, marginBottom: 12 }}>⚠️</div>
-        <h1 style={{ fontSize: 19, margin: '0 0 8px' }}>Periksa dulu</h1>
+        <h1 style={{ fontSize: 19, margin: '0 0 8px' }}>{t('Periksa dulu', 'Check first')}</h1>
         <p style={{ color: 'rgba(255,255,255,.72)', lineHeight: 1.6, margin: '0 0 6px' }}>
           <strong>{record.name}</strong>{reason ? ` — ${reason}` : ''}
           {record.village ? ` · ${record.village}` : ''}.
         </p>
         <p style={{ color: 'rgba(255,255,255,.5)', fontSize: 14, lineHeight: 1.6 }}>
-          Ini bukan profil yang biasa untuk pemeriksaan kehamilan. Lanjutkan
-          hanya jika Anda yakin ini orang yang benar.
+          {t('Ini bukan profil yang biasa untuk pemeriksaan kehamilan. Lanjutkan hanya jika Anda yakin ini orang yang benar.',
+              'This is not a usual profile for an antenatal check. Continue only if you are sure this is the right person.')}
         </p>
         <button onClick={() => setConfirmed(true)} style={backBtn}>
           Ya, lanjutkan pemeriksaan
@@ -160,12 +164,13 @@ export default function AncVisitPage() {
     return (
       <main style={wrap}>
         <div style={{ fontSize: 34, marginBottom: 10 }}>✅</div>
-        <h1 style={{ fontSize: 21, margin: '0 0 6px' }}>Kunjungan tersimpan</h1>
+        <h1 style={{ fontSize: 21, margin: '0 0 6px' }}>{t('Kunjungan tersimpan', 'Visit saved')}</h1>
         <p style={{ color: 'rgba(255,255,255,.6)', margin: '0 0 4px', lineHeight: 1.6 }}>
           {record.name} · {values.visitType} · skor 10T {saved.score}/10
         </p>
         <p style={{ color: 'rgba(255,255,255,.4)', fontSize: 13, lineHeight: 1.6 }}>
-          Tersimpan di perangkat. Akan terkirim otomatis saat ada sinyal.
+          {t('Tersimpan di perangkat. Akan terkirim otomatis saat ada sinyal.',
+              'Saved on the device. It will upload automatically when there is signal.')}
         </p>
         {saved.refer && (
           <>
@@ -179,7 +184,7 @@ export default function AncVisitPage() {
             />
           </>
         )}
-        <button onClick={() => router.replace('/search')} style={backBtn}>Selesai</button>
+        <button onClick={() => router.replace('/search')} style={backBtn}>{t('Selesai', 'Done')}</button>
       </main>
     );
   }
@@ -192,10 +197,11 @@ export default function AncVisitPage() {
 
   return (
     <main style={{ padding: 20, maxWidth: 460, margin: '0 auto' }}>
+      <AppHeader name={identity.name} village={identity.village} />
       <button onClick={() => router.back()} style={{
         background: 'none', border: 'none', color: 'rgba(255,255,255,.5)',
         fontSize: 13, padding: 0, marginBottom: 14, cursor: 'pointer',
-      }}>← Kembali</button>
+      }}>{t('← Kembali', '← Back')}</button>
 
       <AncForm
         motherName={record.name}

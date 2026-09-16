@@ -18,6 +18,7 @@
 import { useState, useMemo } from 'react';
 import { score10T, generateClinicalFlags, shouldRefer, calculateBMI } from '@sahaibat/anc-engine';
 import { C, ghostBtn, Section, Row, Hint, Field, Select } from './ui';
+import { useLang, flagMessage } from '@/lib/lang';
 
 export interface AncFormValues {
   visitType: string;
@@ -122,13 +123,13 @@ export function birthPlanOf(v: AncFormValues) {
 }
 
 /** What is still unarranged, for the checklist. */
-export function p4kMissing(v: AncFormValues): string[] {
+export function p4kMissing(v: AncFormValues, t: (id: string, en: string) => string): string[] {
   const missing: string[] = [];
-  if (!v.p4kFasilitas) missing.push('tempat bersalin');
-  if (!v.p4kTransportasi) missing.push('transportasi');
-  if (!v.p4kPendanaan) missing.push('pembiayaan');
-  if (!v.p4kDonorDarah) missing.push('calon donor darah');
-  if (!v.p4kPendamping) missing.push('pendamping');
+  if (!v.p4kFasilitas) missing.push(t('tempat bersalin', 'place of birth'));
+  if (!v.p4kTransportasi) missing.push(t('transportasi', 'transport'));
+  if (!v.p4kPendanaan) missing.push(t('pembiayaan', 'funding'));
+  if (!v.p4kDonorDarah) missing.push(t('calon donor darah', 'blood donor'));
+  if (!v.p4kPendamping) missing.push(t('pendamping', 'birth companion'));
   return missing;
 }
 
@@ -143,6 +144,7 @@ interface Props {
 }
 
 export default function AncForm({ motherName, motherAge, subtitle, values, onChange, onSave, saving }: Props) {
+  const { t, lang } = useLang();
   const [showLabs, setShowLabs] = useState(false);
   const set = (k: keyof AncFormValues) => (val: string) => onChange({ ...values, [k]: val });
 
@@ -156,7 +158,7 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
 
   const emergencies = flags.filter(f => f.severity === 'EMERGENCY');
   const warnings = flags.filter(f => f.severity === 'WARNING');
-  const p4kOutstanding = p4kMissing(values);
+  const p4kOutstanding = p4kMissing(values, t);
 
   return (
     <div style={{ paddingBottom: 120 }}>
@@ -175,22 +177,22 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         }}>
           {emergencies.map((f, i) => (
             <div key={i} style={{ fontSize: 13.5, lineHeight: 1.5, color: C.white, marginBottom: i < emergencies.length - 1 ? 8 : 0 }}>
-              {f.message_id}
+              {flagMessage(f, lang)}
             </div>
           ))}
         </div>
       )}
 
-      <Section title="Kunjungan">
+      <Section title={t('Kunjungan', 'Visit')}>
         <Row>
-          <Select label="Jenis" value={values.visitType} onChange={set('visitType')}
+          <Select label={t('Jenis', 'Type')} value={values.visitType} onChange={set('visitType')}
             options={['K1', 'K2', 'K3', 'K4', 'K5', 'K6']} />
-          <Field label="Usia kehamilan" unit="mgg" value={values.gestationalWeeks}
+          <Field label={t('Usia kehamilan', 'Gestational age')} unit="mgg" value={values.gestationalWeeks}
             onChange={set('gestationalWeeks')} numeric />
         </Row>
       </Section>
 
-      <Section title="T1–T2 · Timbang & Tekanan Darah">
+      <Section title={t('T1–T2 · Timbang & Tekanan Darah', 'T1–T2 · Weight & Blood Pressure')}>
         <Row>
           <Field label="BB" unit="kg" value={values.weightKg} onChange={set('weightKg')} numeric />
           <Field label="TB" unit="cm" value={values.heightCm} onChange={set('heightCm')} numeric />
@@ -199,12 +201,12 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
           <Hint>BMI {bmi.bmi.toFixed(1)} — {bmi.category}</Hint>
         )}
         <Row>
-          <Field label="TD sistolik" unit="mmHg" value={values.bpSystolic} onChange={set('bpSystolic')} numeric />
-          <Field label="TD diastolik" unit="mmHg" value={values.bpDiastolic} onChange={set('bpDiastolic')} numeric />
+          <Field label={t('TD sistolik', 'BP systolic')} unit="mmHg" value={values.bpSystolic} onChange={set('bpSystolic')} numeric />
+          <Field label={t('TD diastolik', 'BP diastolic')} unit="mmHg" value={values.bpDiastolic} onChange={set('bpDiastolic')} numeric />
         </Row>
       </Section>
 
-      <Section title="T3 · Tinggi Fundus, LILA, DJJ">
+      <Section title={t('T3 · Tinggi Fundus, LILA, DJJ', 'T3 · Fundal Height, LILA, DJJ')}>
         <Row>
           <Field label="TFU" unit="cm" value={values.fundalHeightCm} onChange={set('fundalHeightCm')} numeric />
           <Field label="LILA" unit="cm" value={values.lilaCm} onChange={set('lilaCm')} numeric />
@@ -215,18 +217,18 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         <Field label="DJJ" unit="dpm" value={values.djjBpm} onChange={set('djjBpm')} numeric />
       </Section>
 
-      <Section title="T4–T5 · Imunisasi TT & Tablet Fe">
+      <Section title={t('T4–T5 · Imunisasi TT & Tablet Fe', 'T4–T5 · TT Immunisation & Iron')}>
         <Row>
-          <Select label="Status TT" value={values.ttStatus} onChange={set('ttStatus')}
+          <Select label={t('Status TT', 'TT status')} value={values.ttStatus} onChange={set('ttStatus')}
             options={['', 'T1', 'T2', 'T3', 'T4', 'T5', 'lengkap']} />
           <Field label="Fe" unit="tablet" value={values.feTablets} onChange={set('feTablets')} numeric />
         </Row>
       </Section>
 
-      <Section title="T6 · Laboratorium">
+      <Section title={t('T6 · Laboratorium', 'T6 · Laboratory')}>
         <Row>
           <Field label="Hb" unit="g/dL" value={values.labHb} onChange={set('labHb')} numeric />
-          <Select label="Protein urine" value={values.labProtein} onChange={set('labProtein')}
+          <Select label={t('Protein urine', 'Urine protein')} value={values.labProtein} onChange={set('labProtein')}
             options={['', '-', '+', '++', '+++']} />
         </Row>
 
@@ -238,17 +240,17 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
             <Row>
               <Select label="HIV" value={values.hivStatus} onChange={set('hivStatus')}
                 options={['', 'non-reaktif', 'reaktif']} />
-              <Select label="Sifilis" value={values.syphilisStatus} onChange={set('syphilisStatus')}
+              <Select label={t('Sifilis', 'Syphilis')} value={values.syphilisStatus} onChange={set('syphilisStatus')}
                 options={['', 'non-reaktif', 'reaktif']} />
             </Row>
             <Row>
               <Select label="HBsAg" value={values.hbsagStatus} onChange={set('hbsagStatus')}
                 options={['', 'non-reaktif', 'reaktif']} />
-              <Select label="Gol. darah" value={values.bloodType} onChange={set('bloodType')}
+              <Select label={t('Gol. darah', 'Blood type')} value={values.bloodType} onChange={set('bloodType')}
                 options={['', 'A', 'B', 'AB', 'O']} />
             </Row>
             <Row>
-              <Field label="Gula darah" unit="mg/dL" value={values.bloodSugarMg} onChange={set('bloodSugarMg')} numeric />
+              <Field label={t('Gula darah', 'Blood sugar')} unit="mg/dL" value={values.bloodSugarMg} onChange={set('bloodSugarMg')} numeric />
               <Select label="Malaria RDT" value={values.malariaRdt} onChange={set('malariaRdt')}
                 options={['', 'negatif', 'positif']} />
             </Row>
@@ -258,54 +260,54 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         )}
       </Section>
 
-      <Section title="T7 · Temu Wicara">
-        <Field label="Topik konseling" value={values.counselling} onChange={set('counselling')}
-          placeholder="tanda bahaya, gizi, KB" />
+      <Section title={t('T7 · Temu Wicara', 'T7 · Counselling')}>
+        <Field label={t('Topik konseling', 'Counselling topics')} value={values.counselling} onChange={set('counselling')}
+          placeholder={t('tanda bahaya, gizi, KB', 'danger signs, nutrition, FP')} />
       </Section>
 
       {/* T8 only exists from 36 weeks. Hiding it earlier is not cosmetic: the
           scorer does not expect it, so showing an empty field would imply a gap
           that is not one. */}
       {gw >= 36 && (
-        <Section title="T8 · Presentasi Janin">
-          <Select label="Presentasi" value={values.presentation} onChange={set('presentation')}
+        <Section title={t('T8 · Presentasi Janin', 'T8 · Fetal Presentation')}>
+          <Select label={t('Presentasi', 'Presentation')} value={values.presentation} onChange={set('presentation')}
             options={['', 'kepala', 'sungsang', 'lintang']} />
         </Section>
       )}
 
-      <Section title="T9–T10 · Tatalaksana & Tindak Lanjut">
-        <Field label="Tatalaksana" value={values.caseManagement} onChange={set('caseManagement')}
-          placeholder="tindakan yang diberikan" />
-        <Field label="Tindak lanjut" value={values.followupPlan} onChange={set('followupPlan')}
-          placeholder="kontrol 4 minggu" />
-        <Field label="Keluhan" value={values.complaints} onChange={set('complaints')}
-          placeholder="jika ada" />
+      <Section title={t('T9–T10 · Tatalaksana & Tindak Lanjut', 'T9–T10 · Management & Follow-up')}>
+        <Field label={t('Tatalaksana', 'Management')} value={values.caseManagement} onChange={set('caseManagement')}
+          placeholder={t('tindakan yang diberikan', 'care given')} />
+        <Field label={t('Tindak lanjut', 'Follow-up')} value={values.followupPlan} onChange={set('followupPlan')}
+          placeholder={t('kontrol 4 minggu', 'review in 4 weeks')} />
+        <Field label={t('Keluhan', 'Complaints')} value={values.complaints} onChange={set('complaints')}
+          placeholder={t('jika ada', 'if any')} />
       </Section>
 
       {/* P4K — the birth plan. Shown from 28 weeks, because before that the
           answers are guesses; emphasised from 36, because a mother with no
           transport arranged at 36 weeks is the one who dies on the way. */}
       {gw >= 28 && (
-        <Section title="P4K · Rencana Persalinan">
-          <Select label="Tempat bersalin" value={values.p4kFasilitas} onChange={set('p4kFasilitas')}
+        <Section title={t('P4K · Rencana Persalinan', 'P4K · Birth Plan')}>
+          <Select label={t('Tempat bersalin', 'Place of birth')} value={values.p4kFasilitas} onChange={set('p4kFasilitas')}
             options={['', 'Puskesmas', 'Rumah sakit', 'Poskesdes', 'Klinik', 'Bidan praktik', 'Rumah']} />
-          <Select label="Transportasi" value={values.p4kTransportasi} onChange={set('p4kTransportasi')}
+          <Select label={t('Transportasi', 'Transport')} value={values.p4kTransportasi} onChange={set('p4kTransportasi')}
             options={['', 'Ambulans', 'Mobil', 'Motor', 'Ojek', 'Angkot', 'Lainnya']} />
-          <Select label="Pembiayaan" value={values.p4kPendanaan} onChange={set('p4kPendanaan')}
+          <Select label={t('Pembiayaan', 'Funding')} value={values.p4kPendanaan} onChange={set('p4kPendanaan')}
             options={['', 'BPJS', 'Jampersal', 'KIS', 'Tabungan', 'Mandiri', 'Lainnya']} />
           <Row>
-            <Field label="Calon donor darah" value={values.p4kDonorDarah}
-              onChange={set('p4kDonorDarah')} placeholder="nama / gol." />
-            <Field label="Pendamping" value={values.p4kPendamping}
-              onChange={set('p4kPendamping')} placeholder="suami / keluarga" />
+            <Field label={t('Calon donor darah', 'Blood donor')} value={values.p4kDonorDarah}
+              onChange={set('p4kDonorDarah')} placeholder={t('nama / gol.', 'name / type')} />
+            <Field label={t('Pendamping', 'Birth companion')} value={values.p4kPendamping}
+              onChange={set('p4kPendamping')} placeholder={t('suami / keluarga', 'husband / family')} />
           </Row>
           {p4kOutstanding.length > 0 && (
             <Hint warn={gw >= 36}>
-              Belum disiapkan: {p4kOutstanding.join(', ')}.
-              {gw >= 36 ? ' Ibu sudah ≥36 minggu — lengkapi sekarang.' : ''}
+              {t('Belum disiapkan', 'Not yet arranged')}: {p4kOutstanding.join(', ')}.
+              {gw >= 36 ? t(' Ibu sudah ≥36 minggu — lengkapi sekarang.', ' She is ≥36 weeks — complete this now.') : ''}
             </Hint>
           )}
-          {p4kOutstanding.length === 0 && <Hint>Rencana persalinan lengkap.</Hint>}
+          {p4kOutstanding.length === 0 && <Hint>{t('Rencana persalinan lengkap.', 'Birth plan complete.')}</Hint>}
         </Section>
       )}
 
@@ -316,7 +318,7 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         }}>
           {warnings.map((f, i) => (
             <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: C.white, marginBottom: i < warnings.length - 1 ? 7 : 0 }}>
-              {f.message_id}
+              {flagMessage(f, lang)}
             </div>
           ))}
         </div>
@@ -334,8 +336,8 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
             <span style={{ fontSize: 19, fontWeight: 800, color: C.teal }}>{quality.score}/10</span>
             <span style={{ fontSize: 12, color: C.dim }}>
               {quality.expectedButSkipped.length > 0
-                ? `belum: ${quality.expectedButSkipped.join(', ')}`
-                : 'lengkap'}
+                ? `${t('belum', 'missing')}: ${quality.expectedButSkipped.join(', ')}`
+                : t('lengkap', 'complete')}
             </span>
             {referral.refer && (
               <span style={{
@@ -344,7 +346,7 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
                 background: referral.urgency === 'emergency' ? C.red : C.amber,
                 color: '#04241E',
               }}>
-                {referral.urgency === 'emergency' ? 'RUJUK DARURAT' : 'RUJUK'}
+                {referral.urgency === 'emergency' ? t('RUJUK DARURAT', 'REFER NOW') : t('RUJUK', 'REFER')}
               </span>
             )}
           </div>
@@ -353,7 +355,7 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
             background: saving ? 'rgba(2,195,154,0.35)' : C.teal,
             color: saving ? C.dim : '#04241E', border: 'none', cursor: saving ? 'default' : 'pointer',
           }}>
-            {saving ? 'Menyimpan…' : 'Simpan kunjungan'}
+            {saving ? t('Menyimpan…', 'Saving…') : t('Simpan kunjungan', 'Save visit')}
           </button>
         </div>
       </div>

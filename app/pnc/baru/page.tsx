@@ -20,6 +20,8 @@ import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
 import { generatePncFlags, shouldReferPnc } from '@sahaibat/anc-engine';
 import { C } from '@/components/ui';
+import { useLang } from '@/lib/lang';
+import AppHeader from '@/components/AppHeader';
 
 function ageFromDob(dob: string): number | null {
   const d = new Date(dob);
@@ -40,6 +42,7 @@ export default function NewPncPage() {
 
   const [values, setValues] = useState<PncFormValues>(EMPTY_PNC);
   const [saving, setSaving] = useState(false);
+  const { t } = useLang();
   const [saved, setSaved] = useState<{ refer: boolean; urgency: string } | null>(null);
 
   useEffect(() => {
@@ -50,9 +53,9 @@ export default function NewPncPage() {
   const age = dob ? ageFromDob(dob) : null;
 
   function next() {
-    if (!name.trim()) { setError('Nama ibu wajib diisi.'); return; }
+    if (!name.trim()) { setError(t('Nama ibu wajib diisi.', 'The mother’s name is required.')); return; }
     if (phone.trim() && !normalisePhone(phone)) {
-      setError('Nomor HP tidak valid. Contoh: 081234567890');
+      setError(t('Nomor HP tidak valid. Contoh: 081234567890', 'Invalid phone number. Example: 081234567890'));
       return;
     }
     setError('');
@@ -116,19 +119,20 @@ export default function NewPncPage() {
     return (
       <main style={wrap}>
         <div style={{ fontSize: 34, marginBottom: 10 }}>✅</div>
-        <h1 style={{ fontSize: 21, margin: '0 0 6px' }}>Kunjungan nifas tersimpan</h1>
+        <h1 style={{ fontSize: 21, margin: '0 0 6px' }}>{t('Kunjungan nifas tersimpan', 'Postnatal visit saved')}</h1>
         <p style={{ color: C.dim, margin: '0 0 4px', lineHeight: 1.6 }}>
           {name} · {values.visitType} · hari ke-{values.daysPostpartum || '?'}
         </p>
         <p style={{ color: 'rgba(255,255,255,.4)', fontSize: 13, lineHeight: 1.6 }}>
-          Ibu baru akan dicocokkan dengan data pusat saat sinkronisasi.
+          {t('Ibu baru akan dicocokkan dengan data pusat saat sinkronisasi.',
+              'A new mother is matched against central records at sync.')}
         </p>
         {saved.refer && (
           <>
             <p style={{ color: C.red, fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
               {saved.urgency === 'emergency'
-                ? 'RUJUKAN DARURAT — dampingi ibu sekarang.'
-                : 'Rujukan dibuat — pastikan ibu dirujuk hari ini.'}
+                ? t('RUJUKAN DARURAT — dampingi ibu sekarang.', 'EMERGENCY REFERRAL — stay with her now.')
+                : t('Rujukan dibuat — pastikan ibu dirujuk hari ini.', 'A referral was created — make sure she is referred today.')}
             </p>
             <ReferralPanel
               profileId={identity.profileId}
@@ -137,7 +141,7 @@ export default function NewPncPage() {
             />
           </>
         )}
-        <button onClick={() => router.replace('/search')} style={primaryBtn}>Selesai</button>
+        <button onClick={() => router.replace('/search')} style={primaryBtn}>{t('Selesai', 'Done')}</button>
       </main>
     );
   }
@@ -145,34 +149,36 @@ export default function NewPncPage() {
   if (step === 'who') {
     return (
       <main style={{ padding: 20, maxWidth: 460, margin: '0 auto' }}>
-        <button onClick={() => router.back()} style={linkBtn}>← Kembali</button>
-        <h1 style={{ fontSize: 20, margin: '0 0 4px' }}>Kunjungan nifas — ibu baru</h1>
+      <AppHeader name={identity.name} village={identity.village} />
+        <button onClick={() => router.back()} style={linkBtn}>{t('← Kembali', '← Back')}</button>
+        <h1 style={{ fontSize: 20, margin: '0 0 4px' }}>{t('Kunjungan nifas — ibu baru', 'Postnatal visit — new mother')}</h1>
         <p style={{ fontSize: 13, color: C.dim, margin: '0 0 20px', lineHeight: 1.55 }}>
-          Isi seperlunya. Hanya nama yang wajib — sisanya membantu mencocokkan
-          ibu ini dengan data yang mungkin sudah ada.
+          {t('Isi seperlunya. Hanya nama yang wajib — sisanya membantu mencocokkan ibu ini dengan data yang mungkin sudah ada.',
+              'Fill in what you can. Only the name is required — the rest helps match her to records that may already exist.')}
         </p>
 
-        <Input label="Nama ibu" value={name} onChange={setName} placeholder="Siti Aminah" required />
-        <Input label="Tanggal lahir" value={dob} onChange={setDob} type="date" />
+        <Input label={t('Nama ibu', 'Mother’s name')} value={name} onChange={setName} placeholder="Siti Aminah" required />
+        <Input label={t('Tanggal lahir', 'Date of birth')} value={dob} onChange={setDob} type="date" />
         {age != null && <p style={{ fontSize: 12, color: C.dim, margin: '-6px 0 12px' }}>Usia {age} tahun</p>}
 
-        <Input label="Nomor HP (opsional)" value={phone} onChange={setPhone}
+        <Input label={t('Nomor HP (opsional)', 'Phone number (optional)')} value={phone} onChange={setPhone}
           placeholder="081234567890" numeric />
         <p style={{ fontSize: 12, color: C.dim, margin: '-6px 0 18px', lineHeight: 1.55 }}>
-          Nomor membantu menghubungkan ibu dengan catatan Kader dan layanan Kasih.
-          Boleh dikosongkan.
+          {t('Nomor membantu menghubungkan ibu dengan catatan Kader dan layanan Kasih. Boleh dikosongkan.',
+              'The number links her to Kader records and the Kasih service. It may be left blank.')}
         </p>
 
         {error && <p style={{ color: C.red, fontSize: 13.5, marginBottom: 14 }}>{error}</p>}
 
-        <button onClick={next} style={primaryBtn}>Lanjut ke pemeriksaan →</button>
+        <button onClick={next} style={primaryBtn}>{t('Lanjut ke pemeriksaan →', 'Continue to the examination →')}</button>
       </main>
     );
   }
 
   return (
     <main style={{ padding: 20, maxWidth: 460, margin: '0 auto' }}>
-      <button onClick={() => setStep('who')} style={linkBtn}>← Ubah data ibu</button>
+      <AppHeader name={identity.name} village={identity.village} />
+      <button onClick={() => setStep('who')} style={linkBtn}>{t('← Ubah data ibu', '← Edit her details')}</button>
       <PncForm
         motherName={name}
         subtitle={[age != null ? `${age} th` : null, 'ibu baru'].filter(Boolean).join(' · ')}

@@ -10,6 +10,8 @@ import PncForm, { EMPTY_PNC, toPncInput, type PncFormValues } from '@/components
 import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
 import { generatePncFlags, shouldReferPnc } from '@sahaibat/anc-engine';
+import { useLang } from '@/lib/lang';
+import AppHeader from '@/components/AppHeader';
 
 export default function PncVisitPage() {
   const router = useRouter();
@@ -19,6 +21,7 @@ export default function PncVisitPage() {
   const [record, setRecord] = useState<RegisterRecord | null>(null);
   const [values, setValues] = useState<PncFormValues>(EMPTY_PNC);
   const [saving, setSaving] = useState(false);
+  const { t } = useLang();
   const [saved, setSaved] = useState<{ refer: boolean; urgency: string } | null>(null);
   const [notFound, setNotFound] = useState(false);
 
@@ -83,7 +86,8 @@ export default function PncVisitPage() {
     return (
       <main style={wrap}>
         <p style={{ color: 'rgba(255,255,255,.6)', lineHeight: 1.6 }}>
-          Ibu ini tidak ada di data lokal perangkat. Coba cari lagi, atau daftarkan baru.
+          {t('Ibu ini tidak ada di data lokal perangkat. Coba cari lagi, atau daftarkan baru.',
+              'She is not in this device’s local data. Search again, or register her as new.')}
         </p>
         <button onClick={() => router.replace('/search')} style={backBtn}>← Kembali ke pencarian</button>
       </main>
@@ -96,19 +100,20 @@ export default function PncVisitPage() {
     return (
       <main style={wrap}>
         <div style={{ fontSize: 34, marginBottom: 10 }}>✅</div>
-        <h1 style={{ fontSize: 21, margin: '0 0 6px' }}>Kunjungan nifas tersimpan</h1>
+        <h1 style={{ fontSize: 21, margin: '0 0 6px' }}>{t('Kunjungan nifas tersimpan', 'Postnatal visit saved')}</h1>
         <p style={{ color: 'rgba(255,255,255,.6)', margin: '0 0 4px', lineHeight: 1.6 }}>
           {record.name} · {values.visitType} · hari ke-{values.daysPostpartum || '?'}
         </p>
         <p style={{ color: 'rgba(255,255,255,.4)', fontSize: 13, lineHeight: 1.6 }}>
-          Tersimpan di perangkat. Akan terkirim otomatis saat ada sinyal.
+          {t('Tersimpan di perangkat. Akan terkirim otomatis saat ada sinyal.',
+              'Saved on the device. It will upload automatically when there is signal.')}
         </p>
         {saved.refer && (
           <>
             <p style={{ color: '#FF6B6B', fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
               {saved.urgency === 'emergency'
-                ? 'RUJUKAN DARURAT — dampingi ibu sekarang.'
-                : 'Rujukan dibuat — pastikan ibu dirujuk hari ini.'}
+                ? t('RUJUKAN DARURAT — dampingi ibu sekarang.', 'EMERGENCY REFERRAL — stay with her now.')
+                : t('Rujukan dibuat — pastikan ibu dirujuk hari ini.', 'A referral was created — make sure she is referred today.')}
             </p>
             <ReferralPanel
               profileId={identity.profileId}
@@ -117,7 +122,7 @@ export default function PncVisitPage() {
             />
           </>
         )}
-        <button onClick={() => router.replace('/search')} style={backBtn}>Selesai</button>
+        <button onClick={() => router.replace('/search')} style={backBtn}>{t('Selesai', 'Done')}</button>
       </main>
     );
   }
@@ -129,10 +134,11 @@ export default function PncVisitPage() {
 
   return (
     <main style={{ padding: 20, maxWidth: 460, margin: '0 auto' }}>
+      <AppHeader name={identity.name} village={identity.village} />
       <button onClick={() => router.back()} style={{
         background: 'none', border: 'none', color: 'rgba(255,255,255,.5)',
         fontSize: 13, padding: 0, marginBottom: 14, cursor: 'pointer',
-      }}>← Kembali</button>
+      }}>{t('← Kembali', '← Back')}</button>
 
       <PncForm
         motherName={record.name}

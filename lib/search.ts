@@ -86,10 +86,15 @@ export function ancImplausibleReason(r: RegisterRecord): string | null {
   return null;
 }
 
+/** Local translate, so this module stays pure — no React, no store import. */
+type T = (id: string, en: string) => string;
+const ID: T = (id) => id;
+
 export function searchRegister(
   query: string,
   register: RegisterRecord[],
   filters: SearchFilters = {},
+  t: T = ID,
   limit = DEFAULT_LIMIT
 ): SearchOutcome {
   const q = normaliseName(query);
@@ -116,16 +121,16 @@ export function searchRegister(
     //    standing in her own village, and so is the woman in front of her.
     if (filters.homeRegionId != null && r.regionId === filters.homeRegionId) {
       score += 0.30;
-      why.push('Desa Anda');
+      why.push(t('Desa Anda', 'Your village'));
     } else if (r.village) {
-      why.push(`Luar desa — ${r.village}`);
+      why.push(t(`Luar desa — ${r.village}`, `Outside village — ${r.village}`));
     }
 
     // ── Recency. Someone seen last month is likelier than someone seen once
     //    a year ago, and it decays rather than cutting off.
     const d = daysSince(r.lastSeenAt);
     if (d != null) {
-      if (d <= 30) { score += 0.15; why.push('terakhir < 1 bulan'); }
+      if (d <= 30) { score += 0.15; why.push(t('terakhir < 1 bulan', 'seen < 1 month ago')); }
       else if (d <= 90) score += 0.08;
       else if (d > 365) score -= 0.05;
     }
@@ -138,11 +143,11 @@ export function searchRegister(
 
     if (filters.preferPregnant && r.isPregnant) {
       score += 0.12;
-      why.push('sedang hamil');
+      why.push(t('sedang hamil', 'pregnant'));
     }
 
     // ── An exact normalised name is worth saying out loud.
-    if (normaliseName(r.name) === q) why.unshift('nama persis');
+    if (normaliseName(r.name) === q) why.unshift(t('nama persis', 'exact name'));
 
     scored.push({ record: r, score, why });
   }
@@ -164,21 +169,24 @@ export function searchRegister(
 
 /** One line of context under a name — the fields that actually separate two
  *  women called Siti, in the order a midwife reads them. */
-export function describeRecord(r: RegisterRecord): string {
+export function describeRecord(r: RegisterRecord, t: T = ID): string {
   const bits: string[] = [];
-  if (r.ageYears != null) bits.push(`${r.ageYears} th`);
-  else if (r.ageMonths != null) bits.push(`${r.ageMonths} bln`);
+  if (r.ageYears != null) bits.push(`${r.ageYears} ${t('th', 'yrs')}`);
+  else if (r.ageMonths != null) bits.push(`${r.ageMonths} ${t('bln', 'mo')}`);
   if (r.village) bits.push(r.village);
-  if (r.motherName) bits.push(`anaknya ${r.motherName}`);
-  if (r.isPregnant && r.edd) bits.push(`HPL ${r.edd}`);
+  if (r.motherName) bits.push(t(`anaknya ${r.motherName}`, `child of ${r.motherName}`));
+  // HPL is what the Buku KIA calls it; EDD is what an English speaker expects.
+  if (r.isPregnant && r.edd) bits.push(`${t('HPL', 'EDD')} ${r.edd}`);
   if (r.nikLast4) bits.push(`NIK …${r.nikLast4}`);
   return bits.join(' · ');
 }
 
-export function describeLastSeen(r: RegisterRecord): string | null {
+export function describeLastSeen(r: RegisterRecord, t: T = ID, locale = 'id-ID'): string | null {
   if (!r.lastSeenAt) return null;
-  const when = new Date(r.lastSeenAt).toLocaleDateString('id-ID', {
+  const when = new Date(r.lastSeenAt).toLocaleDateString(locale, {
     day: 'numeric', month: 'short', year: 'numeric',
   });
-  return r.lastSeenBy ? `Terakhir ${when} — ${r.lastSeenBy}` : `Terakhir ${when}`;
+  return r.lastSeenBy
+    ? t(`Terakhir ${when} — ${r.lastSeenBy}`, `Last seen ${when} — ${r.lastSeenBy}`)
+    : t(`Terakhir ${when}`, `Last seen ${when}`);
 }

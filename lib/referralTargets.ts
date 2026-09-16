@@ -61,16 +61,26 @@ export async function refreshTargets(profileId: string): Promise<Cached | null> 
   }
 }
 
-/** Why there is nothing to show, in her language. */
-export function explainEmpty(notes: string[]): string {
+/**
+ * Why there is nothing to show, in her language.
+ *
+ * Never "no results" on its own. A midwife who opens a chooser and finds an
+ * empty list concludes the app is broken, and she is not wrong to — the
+ * reason is always something on our side, so say which.
+ */
+export function explainEmpty(notes: string[], t: (id: string, en: string) => string = (id) => id): string {
   if (notes.includes('no_region')) {
-    return 'Posyandu Anda belum terhubung ke desa, jadi rujukan otomatis belum tersedia.';
+    return t('Posyandu Anda belum terhubung ke desa, jadi rujukan otomatis belum tersedia.',
+             'Your Posyandu is not linked to a village yet, so automatic referral targets are unavailable.');
   }
   if (notes.includes('puskesmas_master_unavailable') || notes.includes('no_puskesmas_in_kabupaten')) {
-    return 'Daftar Puskesmas untuk wilayah Anda belum tersedia.';
+    return t('Daftar Puskesmas untuk wilayah Anda belum tersedia.',
+             'The Puskesmas list for your district is not available yet.');
   }
   if (notes.includes('unreachable') || notes.some((n) => n.startsWith('upstream_'))) {
-    return 'Daftar tujuan rujukan belum bisa dimuat. Surat rujukan tetap bisa dibuat.';
+    return t('Daftar tujuan rujukan belum bisa dimuat. Surat rujukan tetap bisa dibuat.',
+             'Referral destinations could not be loaded. The referral letter still works.');
   }
-  return 'Belum ada faskes terdaftar untuk wilayah Anda.';
+  return t('Belum ada faskes terdaftar untuk wilayah Anda.',
+           'No registered facilities for your district yet.');
 }

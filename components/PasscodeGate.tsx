@@ -15,6 +15,7 @@ import {
 } from '@/lib/passcode';
 import { getIdentity, clearIdentity } from '@/lib/auth';
 import { C } from './ui';
+import { useLang } from '@/lib/lang';
 
 export default function PasscodeGate({ children }: { children: React.ReactNode }) {
   // Undecided until mounted: rendering the app and then hiding it would flash
@@ -24,6 +25,7 @@ export default function PasscodeGate({ children }: { children: React.ReactNode }
   const [error, setError] = useState('');
   const [tries, setTries] = useState(0);
   const [forgot, setForgot] = useState(false);
+  const { t } = useLang();
 
   useEffect(() => {
     setLocked(isPasscodeSet() && !isUnlocked());
@@ -76,26 +78,26 @@ export default function PasscodeGate({ children }: { children: React.ReactNode }
         minHeight: '100dvh', display: 'flex', flexDirection: 'column',
         justifyContent: 'center', padding: 26, maxWidth: 380, margin: '0 auto',
       }}>
-        <h1 style={{ fontSize: 19, margin: '0 0 12px' }}>Atur ulang PIN</h1>
+        <h1 style={{ fontSize: 19, margin: '0 0 12px' }}>{t('Atur ulang PIN', 'Reset PIN')}</h1>
         <p style={{ fontSize: 14.5, color: C.dim, lineHeight: 1.6, margin: '0 0 12px' }}>
-          PIN akan dihapus dan Anda keluar dari aplikasi. Untuk masuk lagi,
-          Anda perlu sinyal sebentar.
+          {t('PIN akan dihapus dan Anda keluar dari aplikasi. Untuk masuk lagi, Anda perlu sinyal sebentar.',
+              'Your PIN will be cleared and you will be signed out. To sign in again you will need signal briefly.')}
         </p>
         <p style={{ fontSize: 14.5, color: C.teal, lineHeight: 1.6, margin: '0 0 22px' }}>
-          Data kunjungan yang belum terkirim <strong>tidak akan hilang</strong> &mdash;
-          tetap tersimpan dan terkirim otomatis saat ada sinyal.
+          {t('Data kunjungan yang belum terkirim tidak akan hilang — tetap tersimpan dan terkirim otomatis saat ada sinyal.',
+              'Visits that have not been sent yet will not be lost — they stay on the device and upload automatically when there is signal.')}
         </p>
         <button onClick={handleForgot} style={{
           padding: 15, borderRadius: 11, background: C.teal, color: '#04241E',
           fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer',
         }}>
-          Hapus PIN &amp; keluar
+          {t('Hapus PIN & keluar', 'Clear PIN & sign out')}
         </button>
         <button onClick={() => setForgot(false)} style={{
           marginTop: 12, padding: 13, borderRadius: 11, background: 'transparent',
           color: C.dim, fontSize: 14, border: `1px solid ${C.border}`, cursor: 'pointer',
         }}>
-          Batal
+          {t('Batal', 'Cancel')}
         </button>
       </main>
     );
@@ -107,9 +109,9 @@ export default function PasscodeGate({ children }: { children: React.ReactNode }
       alignItems: 'center', justifyContent: 'center', padding: 24, maxWidth: 340, margin: '0 auto',
     }}>
       <div style={{ fontSize: 30, marginBottom: 10 }}>🔒</div>
-      <h1 style={{ fontSize: 18, margin: '0 0 6px', textAlign: 'center' }}>Masukkan PIN</h1>
+      <h1 style={{ fontSize: 18, margin: '0 0 6px', textAlign: 'center' }}>{t('Masukkan PIN', 'Enter PIN')}</h1>
       <p style={{ fontSize: 13, color: C.dim, textAlign: 'center', margin: '0 0 22px', lineHeight: 1.55 }}>
-        Data ibu di perangkat ini bersifat pribadi.
+        {t('Data ibu di perangkat ini bersifat pribadi.', 'The mothers’ data on this device is private.')}
       </p>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 18 }}>
@@ -123,7 +125,7 @@ export default function PasscodeGate({ children }: { children: React.ReactNode }
       </div>
 
       <div style={{ minHeight: 20, marginBottom: 10 }}>
-        {error && <span style={{ fontSize: 13, color: C.red }}>{error}</span>}
+        {error && <span style={{ fontSize: 13, color: C.red }}>{t('PIN salah.', 'Wrong PIN.')}</span>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, width: '100%' }}>
@@ -132,7 +134,7 @@ export default function PasscodeGate({ children }: { children: React.ReactNode }
         ))}
         <span />
         <Key onClick={() => press('0')}>0</Key>
-        <Key onClick={() => setCode((c) => c.slice(0, -1))} aria-label="Hapus">⌫</Key>
+        <Key onClick={() => setCode((c) => c.slice(0, -1))} aria-label={t('Hapus', 'Delete')}>⌫</Key>
       </div>
 
       {/* From the first attempt, not the sixth. A midwife who has forgotten
@@ -141,12 +143,13 @@ export default function PasscodeGate({ children }: { children: React.ReactNode }
         marginTop: 22, background: 'none', border: 'none', cursor: 'pointer',
         color: C.dim, fontSize: 13, textDecoration: 'underline', padding: 8,
       }}>
-        Lupa PIN?
+        {t('Lupa PIN?', 'Forgot PIN?')}
       </button>
 
       {tries >= 3 && (
         <p style={{ fontSize: 12, color: C.dimmer, textAlign: 'center', marginTop: 4, lineHeight: 1.6 }}>
-          {phone ? `Masuk sebagai ${phone}.` : ''} Data kunjungan Anda aman.
+          {phone ? t(`Masuk sebagai ${phone}.`, `Signed in as ${phone}.`) : ''}{' '}
+          {t('Data kunjungan Anda aman.', 'Your recorded visits are safe.')}
         </p>
       )}
     </main>

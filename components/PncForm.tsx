@@ -22,6 +22,7 @@
 import { useMemo } from 'react';
 import { generatePncFlags, shouldReferPnc, kfForDay } from '@sahaibat/anc-engine';
 import { C, Section, Row, Hint, Field, Select, Tri } from './ui';
+import { useLang, flagMessage } from '@/lib/lang';
 
 export interface PncFormValues {
   visitType: string;
@@ -72,11 +73,11 @@ export function toPncInput(v: PncFormValues) {
   };
 }
 
-const BLEEDING_LABEL: Record<string, string> = {
-  '': '—',
-  none: 'Tidak ada',
-  normal: 'Normal / sedikit',
-  high: 'Banyak',
+const BLEEDING_LABEL: Record<string, [string, string]> = {
+  '': ['—', '—'],
+  none: ['Tidak ada', 'None'],
+  normal: ['Normal / sedikit', 'Normal / light'],
+  high: ['Banyak', 'Heavy'],
 };
 
 interface Props {
@@ -89,6 +90,7 @@ interface Props {
 }
 
 export default function PncForm({ motherName, subtitle, values, onChange, onSave, saving }: Props) {
+  const { t, lang } = useLang();
   const set = <K extends keyof PncFormValues>(k: K) => (val: PncFormValues[K]) =>
     onChange({ ...values, [k]: val });
 
@@ -122,82 +124,85 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
               fontSize: 13.5, lineHeight: 1.5, color: C.white,
               marginBottom: i < emergencies.length - 1 ? 8 : 0,
             }}>
-              {f.message_id}
+              {flagMessage(f, lang)}
             </div>
           ))}
         </div>
       )}
 
-      <Section title="Kunjungan nifas">
+      <Section title={t('Kunjungan nifas', 'Postnatal visit')}>
         <Row>
-          <Select label="Jenis" value={values.visitType} onChange={set('visitType')}
+          <Select label={t('Jenis', 'Type')} value={values.visitType} onChange={set('visitType')}
             options={['KF1', 'KF2', 'KF3', 'KF4']} />
-          <Field label="Hari ke-" value={values.daysPostpartum}
-            onChange={set('daysPostpartum')} numeric placeholder="mis. 3" />
+          <Field label={t('Hari ke-', 'Day')} value={values.daysPostpartum}
+            onChange={set('daysPostpartum')} numeric placeholder={t('mis. 3', 'e.g. 3')} />
         </Row>
         {suggestedKf && suggestedKf !== values.visitType && (
           <Hint warn>
-            Hari ke-{days} biasanya {suggestedKf}. Ubah jika perlu — kunjungan terlambat
-            tetap dicatat.
+            {t(`Hari ke-${days} biasanya ${suggestedKf}. Ubah jika perlu — kunjungan terlambat tetap dicatat.`,
+               `Day ${days} is usually ${suggestedKf}. Change it if needed — a late visit is still recorded.`)}
           </Hint>
         )}
         {days != null && days > 42 && (
-          <Hint warn>Hari ke-{days} sudah di luar masa nifas (42 hari).</Hint>
+          <Hint warn>{t(`Hari ke-${days} sudah di luar masa nifas (42 hari).`,
+                         `Day ${days} is outside the postnatal period (42 days).`)}</Hint>
         )}
       </Section>
 
-      <Section title="Ibu · tanda vital">
+      <Section title={t('Ibu · tanda vital', 'Mother · vital signs')}>
         <Row>
-          <Field label="TD sistolik" unit="mmHg" value={values.bpSystolic}
+          <Field label={t('TD sistolik', 'BP systolic')} unit="mmHg" value={values.bpSystolic}
             onChange={set('bpSystolic')} numeric />
-          <Field label="TD diastolik" unit="mmHg" value={values.bpDiastolic}
+          <Field label={t('TD diastolik', 'BP diastolic')} unit="mmHg" value={values.bpDiastolic}
             onChange={set('bpDiastolic')} numeric />
         </Row>
-        <Field label="Suhu" unit="°C" value={values.temperatureC}
-          onChange={set('temperatureC')} numeric placeholder="mis. 36,8" />
+        <Field label={t('Suhu', 'Temperature')} unit="°C" value={values.temperatureC}
+          onChange={set('temperatureC')} numeric placeholder={t('mis. 36,8', 'e.g. 36.8')} />
         {/* Temperature was captured on WhatsApp and never evaluated. It is
             first-class here because fever is the sepsis signal. */}
-        <Hint>Demam ≥ 38 °C adalah tanda infeksi nifas — selalu ukur.</Hint>
+        <Hint>{t('Demam ≥ 38 °C adalah tanda infeksi nifas — selalu ukur.',
+                  'A fever ≥ 38 °C is a sign of puerperal infection — always measure.')}</Hint>
       </Section>
 
-      <Section title="Ibu · perdarahan & involusi">
+      <Section title={t('Ibu · perdarahan & involusi', 'Mother · bleeding & involution')}>
         <Select
-          label="Perdarahan"
+          label={t('Perdarahan', 'Bleeding')}
           value={values.bleeding}
           onChange={(v) => set('bleeding')(v as PncFormValues['bleeding'])}
           options={['', 'none', 'normal', 'high']}
         />
-        <Hint>{BLEEDING_LABEL[values.bleeding] ?? '—'}</Hint>
-        <Tri label="Lokia berbau?" value={values.lochiaFoul} onChange={set('lochiaFoul')} />
-        <Tri label="Luka jahitan terinfeksi?" value={values.woundInfected} onChange={set('woundInfected')} />
+        <Hint>{(BLEEDING_LABEL[values.bleeding] ?? ['—', '—'])[lang === 'en' ? 1 : 0]}</Hint>
+        <Tri label={t('Lokia berbau?', 'Foul-smelling lochia?')} value={values.lochiaFoul} onChange={set('lochiaFoul')} />
+        <Tri label={t('Luka jahitan terinfeksi?', 'Wound infected?')} value={values.woundInfected} onChange={set('woundInfected')} />
       </Section>
 
-      <Section title="Bayi">
-        <Field label="Berat bayi" unit="kg" value={values.babyWeightKg}
-          onChange={set('babyWeightKg')} numeric placeholder="mis. 3,1" />
-        <Tri label="Ikterus berat?" value={values.jaundiceSevere} onChange={set('jaundiceSevere')} />
-        <Tri label="Menyusui lancar?" value={values.breastfeedingEstablished}
-          onChange={set('breastfeedingEstablished')} yes="Lancar" no="Belum" />
+      <Section title={t('Bayi', 'Baby')}>
+        <Field label={t('Berat bayi', 'Baby weight')} unit="kg" value={values.babyWeightKg}
+          onChange={set('babyWeightKg')} numeric placeholder={t('mis. 3,1', 'e.g. 3.1')} />
+        <Tri label={t('Ikterus berat?', 'Severe jaundice?')} value={values.jaundiceSevere} onChange={set('jaundiceSevere')} />
+        <Tri label={t('Menyusui lancar?', 'Breastfeeding established?')} value={values.breastfeedingEstablished}
+          onChange={set('breastfeedingEstablished')} yes={t('Lancar', 'Yes')} no={t('Belum', 'Not yet')} />
       </Section>
 
-      <Section title="Kesehatan jiwa & KB">
-        <Field label="Skor EPDS" unit="0–30" value={values.epdsScore}
+      <Section title={t('Kesehatan jiwa & KB', 'Mental health & family planning')}>
+        <Field label={t('Skor EPDS', 'EPDS score')} unit="0–30" value={values.epdsScore}
           onChange={set('epdsScore')} numeric />
-        <Hint>≥ 10 perlu tindak lanjut, ≥ 13 kemungkinan depresi postpartum.</Hint>
-        <Tri label="Konseling KB diberikan?" value={values.fpCounselling} onChange={set('fpCounselling')} />
+        <Hint>{t('≥ 10 perlu tindak lanjut, ≥ 13 kemungkinan depresi postpartum.',
+                  '≥ 10 needs follow-up, ≥ 13 probable postnatal depression.')}</Hint>
+        <Tri label={t('Konseling KB diberikan?', 'Family planning counselling given?')} value={values.fpCounselling} onChange={set('fpCounselling')} />
       </Section>
 
-      <Section title="Catatan">
-        <Field label="Keluhan" value={values.complaints} onChange={set('complaints')}
-          placeholder="mis. nyeri perut, demam" />
-        <Field label="Tindak lanjut" value={values.followupPlan} onChange={set('followupPlan')} />
+      <Section title={t('Catatan', 'Notes')}>
+        <Field label={t('Keluhan', 'Complaints')} value={values.complaints} onChange={set('complaints')}
+          placeholder={t('mis. nyeri perut, demam', 'e.g. abdominal pain, fever')} />
+        <Field label={t('Tindak lanjut', 'Follow-up')} value={values.followupPlan} onChange={set('followupPlan')} />
       </Section>
 
       {warnings.length > 0 && (
-        <Section title="Perhatian">
+        <Section title={t('Perhatian', 'Attention')}>
           {warnings.map((f, i) => (
             <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: C.amber, marginBottom: 7 }}>
-              {f.message_id}
+              {flagMessage(f, lang)}
             </div>
           ))}
         </Section>
@@ -210,7 +215,8 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
         <div style={{ maxWidth: 560, margin: '0 auto' }}>
           {referral.refer && (
             <div style={{ fontSize: 12.5, color: C.red, marginBottom: 8, textAlign: 'center' }}>
-              Rujukan akan dibuat ({referral.urgency === 'emergency' ? 'DARURAT' : 'segera'})
+              {t('Rujukan akan dibuat', 'A referral will be created')} ({referral.urgency === 'emergency'
+                ? t('DARURAT', 'EMERGENCY') : t('segera', 'urgent')})
             </div>
           )}
           <button onClick={onSave} disabled={saving} style={{
@@ -218,7 +224,7 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
             background: saving ? 'rgba(2,195,154,0.35)' : C.teal,
             color: saving ? C.dim : '#04241E', border: 'none', cursor: saving ? 'default' : 'pointer',
           }}>
-            {saving ? 'Menyimpan…' : 'Simpan kunjungan nifas'}
+            {saving ? t('Menyimpan…', 'Saving…') : t('Simpan kunjungan nifas', 'Save postnatal visit')}
           </button>
         </div>
       </div>

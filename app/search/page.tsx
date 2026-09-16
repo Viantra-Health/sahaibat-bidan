@@ -9,6 +9,7 @@ import { searchRegister, describeRecord, describeLastSeen, type SearchFilters } 
 import PasscodePrompt from '@/components/PasscodePrompt';
 import AppHeader from '@/components/AppHeader';
 import { refreshTargets } from '@/lib/referralTargets';
+import { useLang } from '@/lib/lang';
 
 const C = {
   teal: '#02C39A',
@@ -28,6 +29,7 @@ export default function SearchPage() {
   const [onlyHome, setOnlyHome] = useState(false);
   const [recentOnly, setRecentOnly] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const { t, lang } = useLang();
 
   useEffect(() => {
     const id = getIdentity();
@@ -41,7 +43,7 @@ export default function SearchPage() {
     syncRegister(id.profileId).then(async (r) => {
       if (r.source === 'server') setRegister(await getRegister());
       if (r.reason) setStatus(r.reason);
-      else if (r.count === 0) setStatus('Daftar warga kosong untuk desa Anda.');
+      else if (r.count === 0) setStatus(t('Daftar warga kosong untuk desa Anda.', 'The register is empty for your village.'));
     });
 
     // Referral targets, cached before the first referral rather than during
@@ -59,8 +61,10 @@ export default function SearchPage() {
   }), [identity, onlyPregnant, onlyHome, recentOnly]);
 
   const outcome = useMemo(
-    () => searchRegister(query, register, filters),
-    [query, register, filters]
+    () => searchRegister(query, register, filters, t),
+    // t is in the deps because it changes identity with the language, and the
+    // `why` chips it produces are part of the memoised result.
+    [query, register, filters, t]
   );
 
   if (!identity) return null;
@@ -70,16 +74,16 @@ export default function SearchPage() {
       <AppHeader name={identity.name} village={identity.village} />
 
       <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 21, margin: '0 0 2px' }}>Cari Ibu</h1>
+        <h1 style={{ fontSize: 21, margin: '0 0 2px' }}>{t('Cari Ibu', 'Find a mother')}</h1>
         <div style={{ fontSize: 13, color: C.dim }}>
-          {register.length} warga tersimpan di perangkat ini
+          {t(`${register.length} warga tersimpan di perangkat ini`, `${register.length} people stored on this device`)}
         </div>
       </div>
 
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Ketik nama ibu…"
+        placeholder={t('Ketik nama ibu…', 'Type a mother’s name…')}
         autoFocus
         style={{
           width: '100%', padding: '13px 15px', fontSize: 16, borderRadius: 12,
@@ -92,9 +96,9 @@ export default function SearchPage() {
           of a search has to cost one thumb press. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 18 }}>
         <Chip on={onlyHome} onClick={() => setOnlyHome((v) => !v)}
-          label={identity.village ? `Desa ${identity.village}` : 'Desa saya'} />
-        <Chip on={onlyPregnant} onClick={() => setOnlyPregnant((v) => !v)} label="Hamil" />
-        <Chip on={recentOnly} onClick={() => setRecentOnly((v) => !v)} label="3 bln terakhir" />
+          label={identity.village ? `${t('Desa', 'Village')} ${identity.village}` : t('Desa saya', 'My village')} />
+        <Chip on={onlyPregnant} onClick={() => setOnlyPregnant((v) => !v)} label={t('Hamil', 'Pregnant')} />
+        <Chip on={recentOnly} onClick={() => setRecentOnly((v) => !v)} label={t('3 bln terakhir', 'Last 3 months')} />
       </div>
 
       <PasscodePrompt />
@@ -129,9 +133,9 @@ export default function SearchPage() {
                 }}
               >
                 <span style={{ fontWeight: 700, fontSize: 15 }}>{record.name}</span>
-                <span style={{ fontSize: 12.5, color: C.dim }}>{describeRecord(record)}</span>
-                {describeLastSeen(record) && (
-                  <span style={{ fontSize: 11.5, color: C.dimmer }}>{describeLastSeen(record)}</span>
+                <span style={{ fontSize: 12.5, color: C.dim }}>{describeRecord(record, t)}</span>
+                {describeLastSeen(record, t, lang === 'en' ? 'en-GB' : 'id-ID') && (
+                  <span style={{ fontSize: 11.5, color: C.dimmer }}>{describeLastSeen(record, t, lang === 'en' ? 'en-GB' : 'id-ID')}</span>
                 )}
                 {why.length > 0 && (
                   <span style={{ fontSize: 10, color: C.teal, letterSpacing: '.07em',
@@ -142,14 +146,14 @@ export default function SearchPage() {
               </button>
               <button
                 onClick={() => router.push(`/pnc/${record.memberId}`)}
-                aria-label={`Kunjungan nifas untuk ${record.name}`}
+                aria-label={t(`Kunjungan nifas untuk ${record.name}`, `Postnatal visit for ${record.name}`)}
                 style={{
                   width: 74, background: 'rgba(255,255,255,0.04)', border: 'none',
                   borderLeft: `1px solid ${C.border}`, color: C.dim,
                   fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: '.04em',
                 }}
               >
-                Nifas
+                {t('Nifas', 'Postnatal')}
               </button>
             </div>
           ))}
@@ -164,7 +168,7 @@ export default function SearchPage() {
 
           {outcome.total === 0 && (
             <p style={{ fontSize: 14, color: C.dim, margin: '14px 0', lineHeight: 1.55 }}>
-              Tidak ditemukan di data lokal.
+              {t('Tidak ditemukan di data lokal.', 'Not found in local data.')}
             </p>
           )}
 
@@ -179,7 +183,7 @@ export default function SearchPage() {
               border: `1.5px dashed ${C.dimmer}`, cursor: 'pointer',
             }}
           >
-            Bukan salah satu di atas → Daftarkan baru
+            {t('Bukan salah satu di atas → Daftarkan baru', 'None of these → Register new')}
           </button>
         </>
       )}
@@ -199,7 +203,7 @@ export default function SearchPage() {
               border: 'none', cursor: 'pointer',
             }}
           >
-            + Daftarkan ibu baru
+            {t('+ Daftarkan ibu baru', '+ Register a new mother')}
           </button>
           <button
             onClick={() => router.push('/pnc/baru')}
@@ -209,13 +213,15 @@ export default function SearchPage() {
               border: `1px solid ${C.border}`, cursor: 'pointer',
             }}
           >
-            Kunjungan nifas — ibu baru
+            {t('Kunjungan nifas — ibu baru', 'Postnatal visit — new mother')}
           </button>
 
           <p style={{ fontSize: 12.5, color: C.dimmer, lineHeight: 1.6, marginTop: 16 }}>
             {register.length > 0
-              ? `Ketik nama untuk mencari di antara ${register.length} warga desa ini.`
-              : 'Belum ada data warga di perangkat ini. Daftarkan ibu baru untuk mulai.'}
+              ? t(`Ketik nama untuk mencari di antara ${register.length} warga desa ini.`,
+                    `Type a name to search among ${register.length} people in this village.`)
+              : t('Belum ada data warga di perangkat ini. Daftarkan ibu baru untuk mulai.',
+                    'No people stored on this device yet. Register a new mother to begin.')}
           </p>
         </div>
       )}

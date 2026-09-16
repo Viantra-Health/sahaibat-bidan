@@ -16,11 +16,12 @@
 import { useEffect, useState } from 'react';
 import { getCachedTargets, refreshTargets, explainEmpty, type ReferralTarget } from '@/lib/referralTargets';
 import { C } from './ui';
+import { useLang } from '@/lib/lang';
 
-const RUNG_LABEL: Record<number, string> = {
-  1: 'Puskesmas',
-  2: 'Faskes terdaftar',
-  3: 'Dokter DOK',
+const RUNG_LABEL: Record<number, [string, string]> = {
+  1: ['Puskesmas', 'Puskesmas'],
+  2: ['Faskes terdaftar', 'Registered facility'],
+  3: ['Dokter DOK', 'DOK doctor'],
 };
 
 export default function ReferralPanel({ profileId, urgency, onLetter }: {
@@ -29,6 +30,7 @@ export default function ReferralPanel({ profileId, urgency, onLetter }: {
   onLetter: () => void;
 }) {
   const [targets, setTargets] = useState<ReferralTarget[]>([]);
+  const { t, lang } = useLang();
   const [notes, setNotes] = useState<string[]>([]);
   const [chosen, setChosen] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -53,18 +55,18 @@ export default function ReferralPanel({ profileId, urgency, onLetter }: {
         fontSize: 11, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase',
         color: C.dimmer, marginBottom: 10,
       }}>
-        {urgency === 'emergency' ? 'Rujuk sekarang' : 'Tujuan rujukan'}
+        {urgency === 'emergency' ? t('Rujuk sekarang', 'Refer now') : t('Tujuan rujukan', 'Referral destination')}
       </div>
 
       {byRung.map(({ rung, items }) => (
         <div key={rung} style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 11.5, color: C.dim, marginBottom: 6 }}>{RUNG_LABEL[rung]}</div>
-          {items.map((t) => {
-            const active = chosen === t.ref;
+          <div style={{ fontSize: 11.5, color: C.dim, marginBottom: 6 }}>{RUNG_LABEL[rung]?.[lang === 'en' ? 1 : 0]}</div>
+          {items.map((target) => {
+            const active = chosen === target.ref;
             return (
               <button
-                key={t.ref}
-                onClick={() => setChosen(active ? null : t.ref)}
+                key={target.ref}
+                onClick={() => setChosen(active ? null : target.ref)}
                 aria-pressed={active}
                 style={{
                   width: '100%', textAlign: 'left', marginBottom: 7, padding: '11px 13px',
@@ -74,13 +76,13 @@ export default function ReferralPanel({ profileId, urgency, onLetter }: {
                   display: 'flex', flexDirection: 'column', gap: 2,
                 }}
               >
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{t.name}</span>
-                {t.subtitle && <span style={{ fontSize: 11.5, color: C.dim }}>{t.subtitle}</span>}
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{target.name}</span>
+                {target.subtitle && <span style={{ fontSize: 11.5, color: C.dim }}>{target.subtitle}</span>}
                 {/* An inferred Puskesmas must never look like a confirmed one.
                     She is the one who knows which is actually hers. */}
-                {!t.confirmed && (
+                {!target.confirmed && (
                   <span style={{ fontSize: 10.5, color: C.amber, letterSpacing: '.05em' }}>
-                    perlu dipastikan
+                    {t('perlu dipastikan', 'needs confirming')}
                   </span>
                 )}
               </button>
@@ -91,7 +93,7 @@ export default function ReferralPanel({ profileId, urgency, onLetter }: {
 
       {loaded && byRung.length === 0 && (
         <p style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.6, margin: '0 0 12px' }}>
-          {explainEmpty(notes)}
+          {explainEmpty(notes, t)}
         </p>
       )}
 
@@ -102,10 +104,11 @@ export default function ReferralPanel({ profileId, urgency, onLetter }: {
         border: `1px solid ${byRung.length === 0 ? C.teal : 'rgba(255,255,255,0.3)'}`,
         cursor: 'pointer',
       }}>
-        📄 Buat surat rujukan
+        {t('📄 Buat surat rujukan', '📄 Create referral letter')}
       </button>
       <p style={{ fontSize: 11.5, color: C.dimmer, lineHeight: 1.55, marginTop: 8 }}>
-        Surat bisa dibuat tanpa sinyal dan diberikan langsung kepada ibu.
+        {t('Surat bisa dibuat tanpa sinyal dan diberikan langsung kepada ibu.',
+            'The letter works with no signal and is handed straight to her.')}
       </p>
     </div>
   );

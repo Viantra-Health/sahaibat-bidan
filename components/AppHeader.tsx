@@ -11,6 +11,7 @@
 // pregnancies.
 
 import { C } from './ui';
+import { useLang } from '@/lib/lang';
 
 export default function AppHeader({
   name, village, right,
@@ -19,6 +20,7 @@ export default function AppHeader({
   village?: string | null;
   right?: React.ReactNode;
 }) {
+  const { lang, toggle, t } = useLang();
   // Her stored name is often already "Bidan Yuni Seran". Do not print the
   // role in front of it and say it twice.
   const display = (name ?? '').trim();
@@ -48,11 +50,27 @@ export default function AppHeader({
             fontSize: 10.5, color: C.dimmer, lineHeight: 1.3,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
-            {[withoutRole || null, village || null].filter(Boolean).join(' · ') || 'Bidan'}
+            {[withoutRole || null, village || null].filter(Boolean).join(' · ') || t('Bidan', 'Midwife')}
           </div>
         </div>
       </div>
-      {right}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '0 0 auto' }}>
+        {right}
+        {/* Indonesian is the default and the label shows the language you
+            would switch TO, which is the convention a bilingual user reads
+            fastest. */}
+        <button
+          onClick={toggle}
+          aria-label={lang === 'en' ? 'Ganti ke Bahasa Indonesia' : 'Switch to English'}
+          style={{
+            fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', cursor: 'pointer',
+            padding: '4px 9px', borderRadius: 20, background: 'transparent',
+            color: C.teal, border: `1px solid rgba(2,195,154,.45)`,
+          }}
+        >
+          {lang === 'en' ? 'ID' : 'EN'}
+        </button>
+      </div>
     </header>
   );
 }

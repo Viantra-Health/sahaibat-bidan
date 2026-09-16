@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react';
 import { isPasscodeSet, setPasscode, PASSCODE_LENGTH } from '@/lib/passcode';
 import { C } from './ui';
+import { useLang } from '@/lib/lang';
 
 const DISMISSED = 'sahaibat_bidan_pin_prompt_dismissed';
 
@@ -21,6 +22,7 @@ export default function PasscodePrompt() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const { t } = useLang();
 
   useEffect(() => {
     try {
@@ -33,7 +35,7 @@ export default function PasscodePrompt() {
   if (done) {
     return (
       <div style={box}>
-        <span style={{ fontSize: 13, color: C.teal }}>✓ PIN aktif. Diminta setiap membuka aplikasi.</span>
+        <span style={{ fontSize: 13, color: C.teal }}>{t('✓ PIN aktif. Diminta setiap membuka aplikasi.', '✓ PIN active. Asked each time you open the app.')}</span>
       </div>
     );
   }
@@ -59,29 +61,30 @@ export default function PasscodePrompt() {
       {!open ? (
         <>
           <div style={{ fontSize: 13.5, lineHeight: 1.55, marginBottom: 10 }}>
-            Kunci aplikasi dengan PIN? Daftar ibu hamil di desa ini tersimpan di perangkat.
+            {t('Kunci aplikasi dengan PIN? Daftar ibu hamil di desa ini tersimpan di perangkat.',
+                'Lock the app with a PIN? The list of pregnant women in this village is stored on the device.')}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => setOpen(true)} style={{ ...pill, borderColor: C.teal, color: C.teal }}>
-              Buat PIN
+              {t('Buat PIN', 'Create PIN')}
             </button>
-            <button onClick={dismiss} style={pill}>Nanti saja</button>
+            <button onClick={dismiss} style={pill}>{t('Nanti saja', 'Later')}</button>
           </div>
         </>
       ) : (
         <>
           <div style={{ fontSize: 13, color: C.dim, marginBottom: 9 }}>
-            {PASSCODE_LENGTH} angka. Lupa PIN? Bisa direset lewat WhatsApp —
-            data kunjungan tidak akan hilang.
+            {t(`${PASSCODE_LENGTH} angka. Lupa PIN? Bisa dihapus dari perangkat — data kunjungan tidak akan hilang.`,
+                `${PASSCODE_LENGTH} digits. Forget it? You can clear it on the device — your recorded visits will not be lost.`)}
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 9 }}>
-            <Pin value={code} onChange={setCode} placeholder="PIN" />
-            <Pin value={confirm} onChange={setConfirm} placeholder="Ulangi" />
+            <Pin value={code} onChange={setCode} placeholder={t('PIN', 'PIN')} />
+            <Pin value={confirm} onChange={setConfirm} placeholder={t('Ulangi', 'Repeat')} />
           </div>
           {error && <div style={{ fontSize: 12.5, color: C.red, marginBottom: 9 }}>{error}</div>}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={save} style={{ ...pill, borderColor: C.teal, color: C.teal }}>Simpan</button>
-            <button onClick={() => { setOpen(false); setError(''); }} style={pill}>Batal</button>
+            <button onClick={save} style={{ ...pill, borderColor: C.teal, color: C.teal }}>{t('Simpan', 'Save')}</button>
+            <button onClick={() => { setOpen(false); setError(''); }} style={pill}>{t('Batal', 'Cancel')}</button>
           </div>
         </>
       )}

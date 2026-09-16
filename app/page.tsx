@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { normalisePhone } from '@sahaibat/identity';
 import { saveIdentity, isLoggedIn } from '@/lib/auth';
 import { syncRegister } from '@/lib/syncClient';
+import { useLang } from '@/lib/lang';
 
 const C = {
   bg: '#0D1F1C',
@@ -19,6 +20,7 @@ const C = {
 export default function LoginPage() {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const { t } = useLang();
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -37,7 +39,7 @@ export default function LoginPage() {
     // "812…" all find the same profile.
     const normalised = normalisePhone(phone);
     if (!normalised) {
-      setError('Nomor tidak valid. Contoh: 081234567890');
+      setError(t('Nomor tidak valid. Contoh: 081234567890', 'Invalid number. Example: 081234567890'));
       setLoading(false);
       return;
     }
@@ -53,12 +55,13 @@ export default function LoginPage() {
       // looked identical — and the midwife's only recourse was to retype a
       // number that was correct all along.
       if (res.status === 401) {
-        setError('Aplikasi belum terhubung ke server. Ini bukan kesalahan Anda — hubungi admin.');
+        setError(t('Aplikasi belum terhubung ke server. Ini bukan kesalahan Anda — hubungi admin.',
+          'The app is not connected to the server. This is not your fault — contact an admin.'));
         setLoading(false);
         return;
       }
       if (!res.ok) {
-        setError('Server sedang bermasalah. Coba lagi sebentar.');
+        setError(t('Server sedang bermasalah. Coba lagi sebentar.', 'The server is having trouble. Try again shortly.'));
         setLoading(false);
         return;
       }
@@ -66,7 +69,8 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!data.found) {
-        setError('Nomor belum terdaftar sebagai Bidan. Hubungi koordinator Anda.');
+        setError(t('Nomor belum terdaftar sebagai Bidan. Hubungi koordinator Anda.',
+          'This number is not registered as a midwife. Contact your coordinator.'));
         setLoading(false);
         return;
       }
@@ -89,8 +93,9 @@ export default function LoginPage() {
     } catch {
       setError(
         navigator.onLine
-          ? 'Terjadi kesalahan. Coba lagi.'
-          : 'Tidak ada koneksi. Login pertama kali membutuhkan internet sebentar.'
+          ? t('Terjadi kesalahan. Coba lagi.', 'Something went wrong. Try again.')
+          : t('Tidak ada koneksi. Login pertama kali membutuhkan internet sebentar.',
+            'No connection. The first sign-in needs internet briefly.')
       );
       setLoading(false);
     }
@@ -102,17 +107,18 @@ export default function LoginPage() {
     <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column',
       justifyContent: 'center', padding: 24, maxWidth: 420, margin: '0 auto' }}>
       <div style={{ marginBottom: 32 }}>
-        <div style={{ fontSize: 34, marginBottom: 8 }}>🏥</div>
+        <img src="/icons/icon-192.png" alt="" width={44} height={44}
+             style={{ borderRadius: 11, display: 'block', marginBottom: 12 }} />
         <h1 style={{ fontSize: 26, margin: '0 0 6px', letterSpacing: '-0.02em' }}>
           SahAIbat <span style={{ color: C.teal }}>Bidan</span>
         </h1>
         <p style={{ color: C.dim, margin: 0, fontSize: 15, lineHeight: 1.5 }}>
-          Dokumentasi ANC &amp; PNC. Bekerja tanpa sinyal.
+          {t('Dokumentasi ANC & PNC. Bekerja tanpa sinyal.', 'ANC & PNC records. Works with no signal.')}
         </p>
       </div>
 
       <label style={{ display: 'block', marginBottom: 8, fontSize: 13, color: C.dim }}>
-        Nomor WhatsApp terdaftar
+        {t('Nomor WhatsApp terdaftar', 'Registered WhatsApp number')}
       </label>
       <input
         type="tel"
@@ -145,12 +151,12 @@ export default function LoginPage() {
           border: 'none', cursor: loading || !phone.trim() ? 'default' : 'pointer',
         }}
       >
-        {loading ? 'Memeriksa…' : 'Masuk'}
+        {loading ? t('Memeriksa…', 'Checking…') : t('Masuk', 'Sign in')}
       </button>
 
       <p style={{ color: C.dimmer, fontSize: 12.5, marginTop: 18, lineHeight: 1.6 }}>
-        Cukup nomor Anda — tidak ada kode OTP. Login pertama membutuhkan internet
-        sebentar; setelah itu aplikasi bekerja penuh tanpa sinyal.
+        {t('Cukup nomor Anda — tidak ada kode OTP. Login pertama membutuhkan internet sebentar; setelah itu aplikasi bekerja penuh tanpa sinyal.',
+            'Just your number — no OTP. The first sign-in needs internet briefly; after that the app works fully offline.')}
       </p>
     </main>
   );
