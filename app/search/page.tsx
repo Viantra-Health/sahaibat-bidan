@@ -7,6 +7,7 @@ import { getRegister, type RegisterRecord } from '@/lib/offlineStore';
 import { syncRegister } from '@/lib/syncClient';
 import { searchRegister, describeRecord, describeLastSeen, type SearchFilters } from '@/lib/search';
 import PasscodePrompt from '@/components/PasscodePrompt';
+import AppHeader from '@/components/AppHeader';
 import { refreshTargets } from '@/lib/referralTargets';
 
 const C = {
@@ -66,15 +67,14 @@ export default function SearchPage() {
 
   return (
     <main style={{ padding: 20, maxWidth: 460, margin: '0 auto', minHeight: '100dvh' }}>
-      <header style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 12, color: C.dimmer, letterSpacing: '.08em', textTransform: 'uppercase' }}>
-          Bidan {identity.name}
-        </div>
-        <h1 style={{ fontSize: 21, margin: '4px 0 2px' }}>Cari Ibu</h1>
+      <AppHeader name={identity.name} village={identity.village} />
+
+      <div style={{ marginBottom: 16 }}>
+        <h1 style={{ fontSize: 21, margin: '0 0 2px' }}>Cari Ibu</h1>
         <div style={{ fontSize: 13, color: C.dim }}>
-          {identity.village ? `${identity.village} · ` : ''}{register.length} warga tersimpan
+          {register.length} warga tersimpan di perangkat ini
         </div>
-      </header>
+      </div>
 
       <input
         value={query}
@@ -182,6 +182,42 @@ export default function SearchPage() {
             Bukan salah satu di atas → Daftarkan baru
           </button>
         </>
+      )}
+
+      {/* Empty state. Registration used to live ONLY inside the results block,
+          so with an empty box there was no way to register anyone at all —
+          and week one of a pilot is almost entirely new mothers. The blank
+          screen under the search box was also the app's first impression and
+          did nothing with it. */}
+      {!query.trim() && (
+        <div style={{ marginTop: 6 }}>
+          <button
+            onClick={() => router.push('/anc/baru')}
+            style={{
+              width: '100%', padding: 15, borderRadius: 11, marginBottom: 9,
+              background: C.teal, color: '#04241E', fontWeight: 700, fontSize: 14.5,
+              border: 'none', cursor: 'pointer',
+            }}
+          >
+            + Daftarkan ibu baru
+          </button>
+          <button
+            onClick={() => router.push('/pnc/baru')}
+            style={{
+              width: '100%', padding: 13, borderRadius: 11,
+              background: 'transparent', color: C.dim, fontWeight: 600, fontSize: 13.5,
+              border: `1px solid ${C.border}`, cursor: 'pointer',
+            }}
+          >
+            Kunjungan nifas — ibu baru
+          </button>
+
+          <p style={{ fontSize: 12.5, color: C.dimmer, lineHeight: 1.6, marginTop: 16 }}>
+            {register.length > 0
+              ? `Ketik nama untuk mencari di antara ${register.length} warga desa ini.`
+              : 'Belum ada data warga di perangkat ini. Daftarkan ibu baru untuk mulai.'}
+          </p>
+        </div>
       )}
     </main>
   );

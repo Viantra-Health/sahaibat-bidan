@@ -1,11 +1,18 @@
 {
+  "id": "/",
   "name": "SahAIbat Bidan",
   "short_name": "Bidan",
-  "description": "Dokumentasi ANC & PNC — bekerja tanpa sinyal",
+  "description": "Dokumentasi ANC & PNC untuk bidan — bekerja tanpa sinyal",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0D1F1C",
-  "theme_color": "#0D1F1C",
   "orientation": "portrait",
-  "icons": []
+  "background_color": "#0D1F1C",
+  "theme_color": "#02C39A",
+  "prefer_related_applications": false,
+  "categories": ["health", "medical"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
 }

@@ -52,6 +52,40 @@ function daysSince(iso: string | null): number | null {
   return (Date.now() - t) / 86_400_000;
 }
 
+/**
+ * Could an antenatal visit plausibly be for this person?
+ *
+ * The register is a shared person index for the whole platform — men,
+ * children and grandparents are in it, correctly. Bidan is not, so a row that
+ * cannot be pregnant should not sit at the top of a midwife's results, and
+ * tapping one should ask before opening an antenatal form.
+ *
+ * UNKNOWN IS ALWAYS PLAUSIBLE. Missing sex or missing age must never demote or
+ * block anyone: a woman entered by a kader may have neither recorded, and she
+ * is exactly the mother a midwife most needs to find. This narrows a ranking,
+ * it does not gate care.
+ */
+export function ancPlausible(r: RegisterRecord): boolean {
+  const sex = (r.sex ?? '').trim().toLowerCase();
+  // l / laki-laki / m / male. 'p' is perempuan, so it is NOT a male marker.
+  if (sex && /^(l|m|male|laki|laki-laki|pria)$/.test(sex)) return false;
+
+  const age = r.ageYears;
+  if (age != null && (age < 12 || age > 55)) return false;
+
+  return true;
+}
+
+/** Why a record looks implausible, for the confirmation sentence. */
+export function ancImplausibleReason(r: RegisterRecord): string | null {
+  const sex = (r.sex ?? '').trim().toLowerCase();
+  if (sex && /^(l|m|male|laki|laki-laki|pria)$/.test(sex)) return 'laki-laki';
+  const age = r.ageYears;
+  if (age != null && age < 12) return `berusia ${age} tahun`;
+  if (age != null && age > 55) return `berusia ${age} tahun`;
+  return null;
+}
+
 export function searchRegister(
   query: string,
   register: RegisterRecord[],
@@ -97,6 +131,11 @@ export function searchRegister(
     }
 
     // ── Flow context. She opened ANC; a pregnant woman is the likelier hit.
+    // Demote rather than hide. A midwife does occasionally need to find a
+    // child or a husband, and a row that vanishes reads as "not registered"
+    // and produces a duplicate.
+    if (!ancPlausible(r)) score -= 0.40;
+
     if (filters.preferPregnant && r.isPregnant) {
       score += 0.12;
       why.push('sedang hamil');

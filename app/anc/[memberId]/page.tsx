@@ -10,6 +10,7 @@ import AncForm, { EMPTY_FORM, toEngineInputs, type AncFormValues } from '@/compo
 import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
 import { generateClinicalFlags, shouldRefer } from '@sahaibat/anc-engine';
+import { ancPlausible, ancImplausibleReason } from '@/lib/search';
 
 /** Weeks elapsed of a 40-week pregnancy, derived from EDD. Saves her retyping
  *  a number the register already knows — and a wrong gestational age silently
@@ -33,6 +34,7 @@ export default function AncVisitPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<{ score: number; refer: boolean; urgency: string } | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
     const id = getIdentity();
@@ -120,6 +122,39 @@ export default function AncVisitPage() {
   }
 
   if (!identity || !record) return null;
+
+  // Ask once before opening an antenatal form on a record that cannot
+  // plausibly be pregnant. Without this a mis-tap does not produce a blank
+  // form — it produces a red pregnancy warning about a twelve-year-old boy,
+  // because the engine flags on age alone and the tap asserted a pregnancy
+  // nobody actually claimed.
+  if (!confirmed && !ancPlausible(record)) {
+    const reason = ancImplausibleReason(record);
+    return (
+      <main style={wrap}>
+        <div style={{ fontSize: 30, marginBottom: 12 }}>⚠️</div>
+        <h1 style={{ fontSize: 19, margin: '0 0 8px' }}>Periksa dulu</h1>
+        <p style={{ color: 'rgba(255,255,255,.72)', lineHeight: 1.6, margin: '0 0 6px' }}>
+          <strong>{record.name}</strong>{reason ? ` — ${reason}` : ''}
+          {record.village ? ` · ${record.village}` : ''}.
+        </p>
+        <p style={{ color: 'rgba(255,255,255,.5)', fontSize: 14, lineHeight: 1.6 }}>
+          Ini bukan profil yang biasa untuk pemeriksaan kehamilan. Lanjutkan
+          hanya jika Anda yakin ini orang yang benar.
+        </p>
+        <button onClick={() => setConfirmed(true)} style={backBtn}>
+          Ya, lanjutkan pemeriksaan
+        </button>
+        <button onClick={() => router.replace('/search')} style={{
+          marginTop: 12, padding: 13, borderRadius: 11, background: 'transparent',
+          color: 'rgba(255,255,255,.55)', fontSize: 14,
+          border: '1px solid rgba(2,195,154,.28)', cursor: 'pointer',
+        }}>
+          Bukan dia — cari lagi
+        </button>
+      </main>
+    );
+  }
 
   if (saved) {
     return (
