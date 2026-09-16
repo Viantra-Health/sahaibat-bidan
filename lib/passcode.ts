@@ -12,9 +12,22 @@
 // pregnant, which is identifying, sensitive, and occasionally dangerous to the
 // woman if it is seen by the wrong person. Handsets are shared, lent and lost.
 //
-// So: the passcode gates OPENING the app, is verified entirely on-device so it
-// works with no signal, and resets over WhatsApp because that is the one
-// channel we know reaches her.
+// So: the passcode gates OPENING the app and is verified entirely on-device,
+// so it works with no signal.
+//
+// HOW IT RESETS, AND WHY THAT IS ENOUGH
+// -------------------------------------
+// She clears it herself and signs in again. No code, no SMS, no supervisor.
+//
+// That sounds weak until you notice a passcode cannot be stronger than the
+// door it sits behind: login is a phone number with no OTP, so anyone who
+// knows her number can already install the app fresh and sign in as her.
+// Requiring a sign-in after a reset is therefore exactly as strong as the
+// system already is, and it costs nothing to operate.
+//
+// What makes it safe is SyncDaemon, which uploads the queue even while the
+// app is locked or signed out. The cost of a forgotten PIN is access, never
+// data — and that is the sentence to put in training.
 //
 // WHAT IT IS NOT
 // --------------
@@ -35,8 +48,8 @@ const UNLOCKED = 'sahaibat_bidan_unlocked';  // session-scoped, cleared on close
 const ATTEMPTS = 'sahaibat_bidan_attempts';
 
 export const PASSCODE_LENGTH = 4;
-/** Attempts before the reset hint appears. There is no hard lock-out: see above. */
-export const HINT_AFTER_ATTEMPTS = 5;
+// No hard lock-out, deliberately. Attempts are counted only to soften the
+// screen after a few misses; nothing is ever wiped. See the rule above.
 
 interface Stored { salt: string; hash: string; createdAt: string }
 
@@ -134,9 +147,8 @@ function resetAttempts(): void {
   try { localStorage.removeItem(ATTEMPTS); } catch { /* ignore */ }
 }
 
-/** The message she sends to get her passcode cleared. */
-export function resetInstructions(phone: string | null): string {
-  return phone
-    ? `Kirim pesan WhatsApp "RESET PIN" dari nomor ${phone} ke nomor SahAIbat.`
-    : 'Kirim pesan WhatsApp "RESET PIN" ke nomor SahAIbat dari nomor terdaftar Anda.';
-}
+// resetInstructions() was removed. It told her to send "RESET PIN" over
+// WhatsApp to a handler that was never built, which is worse than offering
+// nothing: it sends a midwife who is already locked out to wait for a reply
+// that cannot come. If a server-side reset is added later, this is where the
+// wording goes back.

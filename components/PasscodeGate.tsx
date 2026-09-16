@@ -11,9 +11,9 @@
 import { useEffect, useState } from 'react';
 import {
   isPasscodeSet, isUnlocked, verifyPasscode, attempts,
-  HINT_AFTER_ATTEMPTS, PASSCODE_LENGTH, resetInstructions,
+  PASSCODE_LENGTH, clearPasscode,
 } from '@/lib/passcode';
-import { getIdentity } from '@/lib/auth';
+import { getIdentity, clearIdentity } from '@/lib/auth';
 import { C } from './ui';
 
 export default function PasscodeGate({ children }: { children: React.ReactNode }) {
@@ -23,6 +23,7 @@ export default function PasscodeGate({ children }: { children: React.ReactNode }
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [tries, setTries] = useState(0);
+  const [forgot, setForgot] = useState(false);
 
   useEffect(() => {
     setLocked(isPasscodeSet() && !isUnlocked());
@@ -49,6 +50,56 @@ export default function PasscodeGate({ children }: { children: React.ReactNode }
 
   const phone = getIdentity()?.phone ?? null;
   const press = (d: string) => setCode((c) => (c.length < PASSCODE_LENGTH ? c + d : c));
+
+  /**
+   * Clear the PIN and the session, then send her back to the login screen.
+   *
+   * This is deliberately NOT a secret-protected reset. A PIN cannot be
+   * stronger than the front door it sits behind, and the front door is a
+   * phone number with no OTP — anyone who knows her number can already
+   * install the app fresh and sign in as her. So requiring a sign-in after
+   * a reset is exactly as strong as the system already was, and needs no
+   * code, no SMS and no supervisor.
+   *
+   * The queue is untouched, and SyncDaemon keeps uploading it even from this
+   * screen, so the cost of a forgotten PIN is access, never data.
+   */
+  function handleForgot() {
+    clearPasscode();
+    clearIdentity();
+    window.location.href = '/';
+  }
+
+  if (forgot) {
+    return (
+      <main style={{
+        minHeight: '100dvh', display: 'flex', flexDirection: 'column',
+        justifyContent: 'center', padding: 26, maxWidth: 380, margin: '0 auto',
+      }}>
+        <h1 style={{ fontSize: 19, margin: '0 0 12px' }}>Atur ulang PIN</h1>
+        <p style={{ fontSize: 14.5, color: C.dim, lineHeight: 1.6, margin: '0 0 12px' }}>
+          PIN akan dihapus dan Anda keluar dari aplikasi. Untuk masuk lagi,
+          Anda perlu sinyal sebentar.
+        </p>
+        <p style={{ fontSize: 14.5, color: C.teal, lineHeight: 1.6, margin: '0 0 22px' }}>
+          Data kunjungan yang belum terkirim <strong>tidak akan hilang</strong> &mdash;
+          tetap tersimpan dan terkirim otomatis saat ada sinyal.
+        </p>
+        <button onClick={handleForgot} style={{
+          padding: 15, borderRadius: 11, background: C.teal, color: '#04241E',
+          fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer',
+        }}>
+          Hapus PIN &amp; keluar
+        </button>
+        <button onClick={() => setForgot(false)} style={{
+          marginTop: 12, padding: 13, borderRadius: 11, background: 'transparent',
+          color: C.dim, fontSize: 14, border: `1px solid ${C.border}`, cursor: 'pointer',
+        }}>
+          Batal
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main style={{
@@ -84,10 +135,18 @@ export default function PasscodeGate({ children }: { children: React.ReactNode }
         <Key onClick={() => setCode((c) => c.slice(0, -1))} aria-label="Hapus">⌫</Key>
       </div>
 
-      {tries >= HINT_AFTER_ATTEMPTS && (
-        <p style={{ fontSize: 12.5, color: C.dim, textAlign: 'center', marginTop: 22, lineHeight: 1.6 }}>
-          Lupa PIN? {resetInstructions(phone)}
-          {' '}Data kunjungan yang belum terkirim tidak akan hilang.
+      {/* From the first attempt, not the sixth. A midwife who has forgotten
+          her PIN does not discover the way out by failing five more times. */}
+      <button onClick={() => setForgot(true)} style={{
+        marginTop: 22, background: 'none', border: 'none', cursor: 'pointer',
+        color: C.dim, fontSize: 13, textDecoration: 'underline', padding: 8,
+      }}>
+        Lupa PIN?
+      </button>
+
+      {tries >= 3 && (
+        <p style={{ fontSize: 12, color: C.dimmer, textAlign: 'center', marginTop: 4, lineHeight: 1.6 }}>
+          {phone ? `Masuk sebagai ${phone}.` : ''} Data kunjungan Anda aman.
         </p>
       )}
     </main>

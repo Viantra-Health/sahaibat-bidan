@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import PasscodeGate from '@/components/PasscodeGate';
+import SyncDaemon from '@/components/SyncDaemon';
 
 export const metadata: Metadata = {
   title: 'SahAIbat Bidan',
@@ -25,6 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Wraps everything rather than living at a route: a lock you can
             navigate around by typing a URL is not a lock, and a shared
             handset is the whole reason this exists. */}
+        {/* Outside the gate on purpose: queued visits must upload whether the
+            app is locked, unlocked, or signed out. See SyncDaemon. */}
+        <SyncDaemon />
         <PasscodeGate>{children}</PasscodeGate>
       </body>
     </html>
