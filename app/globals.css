@@ -1,0 +1,42 @@
+/* app/globals.css
+ *
+ * The baseline the app never had. Everything here is a browser default that
+ * is wrong for this app, not a style choice — the visual design stays in the
+ * components.
+ */
+
+/* THE ONE THAT MATTERED.
+ *
+ * Without this, `width: 100%` on an input means 100% of the container PLUS
+ * 24px of padding and 2px of border. Every field overflowed its column by
+ * 26px, and in a two-column Row the two inputs overlapped each other — which
+ * is what made the form look broken on a narrow screen. One rule, every form
+ * fixed. */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Form controls do not inherit the body font in any browser, so every input,
+ * select and button was rendering in the UA default while the labels around
+ * them used the app's stack. */
+input, select, textarea, button { font: inherit; color: inherit; }
+
+/* A dark app with light native controls: the date picker, its calendar popup,
+ * and select dropdowns all render light-on-light without this. */
+:root { color-scheme: dark; }
+
+/* Stops the grey flash on every tap on Android, which on a form with this
+ * many controls reads as lag. */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Focus has to stay visible for keyboard and switch-access users; only the
+ * default ring on mouse clicks is removed. */
+:focus-visible { outline: 2px solid #02C39A; outline-offset: 2px; }
+
+/* iOS zooms the page when a font under 16px is focused, which on this form
+ * means the layout jumps on every field. The inputs are already 15.5–17px;
+ * this guards the ones that are not. */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea { font-size: max(16px, 1em); }
+}
+
+/* Long village and mother names must wrap rather than widen a flex column. */
+body { overflow-wrap: anywhere; }

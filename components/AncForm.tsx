@@ -133,6 +133,21 @@ export function p4kMissing(v: AncFormValues, t: (id: string, en: string) => stri
   return missing;
 }
 
+/** The 10T standards by name. `belum: t1, t2, t4, t5…` is the app talking to
+ *  itself; a midwife is trained on Timbang, Tekanan Darah, Tinggi Fundus. */
+const T_NAME: Record<string, [string, string]> = {
+  t1:  ['Timbang', 'Weight'],
+  t2:  ['Tekanan darah', 'Blood pressure'],
+  t3:  ['Tinggi fundus', 'Fundal height'],
+  t4:  ['Imunisasi TT', 'TT immunisation'],
+  t5:  ['Tablet Fe', 'Iron tablets'],
+  t6:  ['Laboratorium', 'Laboratory'],
+  t7:  ['Temu wicara', 'Counselling'],
+  t8:  ['Presentasi janin', 'Fetal presentation'],
+  t9:  ['Tatalaksana', 'Management'],
+  t10: ['Tindak lanjut', 'Follow-up'],
+};
+
 interface Props {
   motherName: string;
   motherAge: number | null;
@@ -332,12 +347,24 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         backdropFilter: 'blur(8px)',
       }}>
         <div style={{ maxWidth: 460, margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 9 }}>
-            <span style={{ fontSize: 19, fontWeight: 800, color: C.teal }}>{quality.score}/10</span>
-            <span style={{ fontSize: 12, color: C.dim }}>
-              {quality.expectedButSkipped.length > 0
-                ? `${t('belum', 'missing')}: ${quality.expectedButSkipped.join(', ')}`
-                : t('lengkap', 'complete')}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 10 }}>
+            <span style={{
+              fontSize: 22, fontWeight: 800, lineHeight: 1,
+              color: quality.score >= 8 ? C.teal : quality.score >= 5 ? C.amber : C.dim,
+              fontVariantNumeric: 'tabular-nums', flex: '0 0 auto',
+            }}>
+              {quality.score}<span style={{ fontSize: 13, fontWeight: 600, opacity: .6 }}>/10</span>
+            </span>
+            {/* Named, not coded, and capped at two so the line never wraps and
+                push the save button off a small screen. */}
+            <span style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.35, minWidth: 0 }}>
+              {quality.expectedButSkipped.length > 0 ? (() => {
+                const names = quality.expectedButSkipped
+                  .map((k) => (T_NAME[k] ? T_NAME[k][lang === 'en' ? 1 : 0] : k));
+                const shown = names.slice(0, 2).join(', ');
+                const rest = names.length - 2;
+                return `${t('belum', 'missing')}: ${shown}${rest > 0 ? t(` +${rest} lagi`, ` +${rest} more`) : ''}`;
+              })() : t('✓ 10T lengkap', '✓ 10T complete')}
             </span>
             {referral.refer && (
               <span style={{

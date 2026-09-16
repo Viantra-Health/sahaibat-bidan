@@ -103,6 +103,22 @@ export default function SearchPage() {
 
       <PasscodePrompt />
 
+      {/* Always visible, not only on the empty state. In week one of a pilot
+          almost every visit is a new mother, and a midwife who has typed a
+          name should not have to clear the box to find registration. */}
+      <button
+        onClick={() => router.push('/anc/baru')}
+        style={{
+          width: '100%', padding: '12px 14px', borderRadius: 11, marginBottom: 14,
+          background: 'rgba(2,195,154,0.10)', color: C.teal, fontWeight: 700, fontSize: 14,
+          border: `1px solid rgba(2,195,154,0.45)`, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        }}
+      >
+        <span style={{ fontSize: 17, lineHeight: 1 }}>+</span>
+        {t('Daftarkan ibu baru', 'Register a new mother')}
+      </button>
+
       {status && (
         <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.5, marginBottom: 16 }}>{status}</p>
       )}
@@ -134,6 +150,14 @@ export default function SearchPage() {
               >
                 <span style={{ fontWeight: 700, fontSize: 15 }}>{record.name}</span>
                 <span style={{ fontSize: 12.5, color: C.dim }}>{describeRecord(record, t)}</span>
+                {record.isPregnant && (
+                  <span style={{
+                    fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', color: C.teal,
+                    textTransform: 'uppercase', marginTop: 1,
+                  }}>
+                    {t('Hamil', 'Pregnant')}
+                  </span>
+                )}
                 {describeLastSeen(record, t, lang === 'en' ? 'en-GB' : 'id-ID') && (
                   <span style={{ fontSize: 11.5, color: C.dimmer }}>{describeLastSeen(record, t, lang === 'en' ? 'en-GB' : 'id-ID')}</span>
                 )}
@@ -148,11 +172,14 @@ export default function SearchPage() {
                 onClick={() => router.push(`/pnc/${record.memberId}`)}
                 aria-label={t(`Kunjungan nifas untuk ${record.name}`, `Postnatal visit for ${record.name}`)}
                 style={{
-                  width: 74, background: 'rgba(255,255,255,0.04)', border: 'none',
+                  width: 82, background: 'rgba(255,255,255,0.04)', border: 'none',
                   borderLeft: `1px solid ${C.border}`, color: C.dim,
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: '.04em',
+                  fontSize: 11.5, fontWeight: 700, cursor: 'pointer', letterSpacing: '.04em',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', gap: 3, padding: '10px 6px',
                 }}
               >
+                <span style={{ fontSize: 15, lineHeight: 1 }}>→</span>
                 {t('Nifas', 'Postnatal')}
               </button>
             </div>
@@ -195,16 +222,8 @@ export default function SearchPage() {
           did nothing with it. */}
       {!query.trim() && (
         <div style={{ marginTop: 6 }}>
-          <button
-            onClick={() => router.push('/anc/baru')}
-            style={{
-              width: '100%', padding: 15, borderRadius: 11, marginBottom: 9,
-              background: C.teal, color: '#04241E', fontWeight: 700, fontSize: 14.5,
-              border: 'none', cursor: 'pointer',
-            }}
-          >
-            {t('+ Daftarkan ibu baru', '+ Register a new mother')}
-          </button>
+          {/* The antenatal register button is permanent now and sits above the
+              search box, so the empty state offers only the postnatal path. */}
           <button
             onClick={() => router.push('/pnc/baru')}
             style={{

@@ -1,3 +1,4 @@
+import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import PasscodeGate from '@/components/PasscodeGate';
 import SyncDaemon from '@/components/SyncDaemon';
