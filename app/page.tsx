@@ -48,7 +48,21 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: normalised }),
       });
-      if (!res.ok) throw new Error('Server error');
+      // Every non-200 used to throw and surface one generic message, so a
+      // misconfigured deployment and a number that is genuinely not registered
+      // looked identical — and the midwife's only recourse was to retype a
+      // number that was correct all along.
+      if (res.status === 401) {
+        setError('Aplikasi belum terhubung ke server. Ini bukan kesalahan Anda — hubungi admin.');
+        setLoading(false);
+        return;
+      }
+      if (!res.ok) {
+        setError('Server sedang bermasalah. Coba lagi sebentar.');
+        setLoading(false);
+        return;
+      }
+
       const data = await res.json();
 
       if (!data.found) {

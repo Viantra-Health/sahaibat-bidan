@@ -16,7 +16,16 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'application/json', 'x-pwa-sync-secret': PWA_SYNC_SECRET },
       body: JSON.stringify({ phone }),
     });
-    if (!res.ok) return NextResponse.json({ found: false }, { status: res.status });
+    if (!res.ok) {
+      // 401 here means PWA_SYNC_SECRET differs between this app and the main
+      // one — a deployment fault, not a login fault. Logged distinctly because
+      // it is invisible from the client and looks like a bad phone number.
+      if (res.status === 401) {
+        console.error('[BIDAN_LOOKUP_PROXY] 401 from main app — PWA_SYNC_SECRET mismatch or unset');
+      }
+      return NextResponse.json({ found: false, reason: res.status === 401 ? 'config' : 'upstream' },
+                               { status: res.status });
+    }
     return NextResponse.json(await res.json());
   } catch (e) {
     console.error('[BIDAN_LOOKUP_PROXY]', e);
