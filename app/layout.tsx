@@ -2,7 +2,6 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import PasscodeGate from '@/components/PasscodeGate';
 import SyncDaemon from '@/components/SyncDaemon';
-import { C } from '@/components/ui';
 
 export const metadata: Metadata = {
   title: 'SahAIbat Bidan',
@@ -28,7 +27,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id">
-      <body style={{ margin: 0, background: C.bg, color: C.white,
+      <body style={{ margin: 0, background: 'var(--bg)', color: 'var(--ink)',
         fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
         WebkitFontSmoothing: 'antialiased', minHeight: '100dvh' }}>
         {/* Wraps everything rather than living at a route: a lock you can
