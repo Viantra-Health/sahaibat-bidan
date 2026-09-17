@@ -17,6 +17,7 @@
 
 import { useState, useMemo } from 'react';
 import { score10T, generateClinicalFlags, shouldRefer, calculateBMI } from '@sahaibat/anc-engine';
+import SkipReasons, { type SkipReasonMap } from './SkipReasons';
 import { C, ghostBtn, Section, Row, Hint, Field, Select } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
 
@@ -158,13 +159,19 @@ interface Props {
   subtitle?: string | null;
   values: AncFormValues;
   onChange: (v: AncFormValues) => void;
-  onSave: () => void;
+  /**
+   * Called with why each expected standard was not done, where she gave a
+   * reason. Empty is a perfectly normal answer: the prompt never blocks.
+   */
+  onSave: (skipReasons?: SkipReasonMap) => void;
   saving?: boolean;
 }
 
 export default function AncForm({ motherName, motherAge, subtitle, values, onChange, onSave, saving }: Props) {
   const { t, lang } = useLang();
   const [showLabs, setShowLabs] = useState(false);
+  const [askingWhy, setAskingWhy] = useState(false);
+  const [skipReasons, setSkipReasons] = useState<SkipReasonMap>({});
   const set = (k: keyof AncFormValues) => (val: string) => onChange({ ...values, [k]: val });
 
   const gw = num(values.gestationalWeeks) ?? 0;
@@ -384,15 +391,36 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
               </span>
             )}
           </div>
-          <button onClick={onSave} disabled={saving} style={{
-            width: '100%', padding: 15, fontSize: 15.5, fontWeight: 700, borderRadius: 11,
-            background: saving ? C.accentMuted : C.teal,
-            color: saving ? C.dim : C.onAccent, border: 'none', cursor: saving ? 'default' : 'pointer',
-          }}>
+          <button
+            onClick={() => {
+              // Ask why BEFORE saving rather than after: afterwards the visit
+              // is already recorded and the answer is a survey, which nobody
+              // fills in. Here it is still part of finishing the visit.
+              if (quality.expectedButSkipped.length > 0 && !askingWhy) setAskingWhy(true);
+              else onSave(skipReasons);
+            }}
+            disabled={saving}
+            style={{
+              width: '100%', padding: 15, fontSize: 15.5, fontWeight: 700, borderRadius: 11,
+              background: saving ? C.accentMuted : C.teal,
+              color: saving ? C.dim : C.onAccent, border: 'none', cursor: saving ? 'default' : 'pointer',
+            }}>
             {saving ? t('Menyimpan…', 'Saving…') : t('Simpan kunjungan', 'Save visit')}
           </button>
         </div>
       </div>
+
+      {askingWhy && (
+        <SkipReasons
+          missing={quality.expectedButSkipped}
+          nameOf={(k) => (T_NAME[k] ? T_NAME[k][lang === 'en' ? 1 : 0] : k)}
+          value={skipReasons}
+          onChange={setSkipReasons}
+          onConfirm={() => onSave(skipReasons)}
+          onCancel={() => setAskingWhy(false)}
+          saving={saving}
+        />
+      )}
     </div>
   );
 }

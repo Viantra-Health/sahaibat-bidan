@@ -81,7 +81,7 @@ export default function NewMotherPage() {
     setStep('visit');
   }
 
-  async function handleSave() {
+  async function handleSave(skipReasons?: Record<string, string>) {
     if (!identity || saving) return;
     setSaving(true);
     try {
@@ -91,6 +91,7 @@ export default function NewMotherPage() {
         motherName: name.trim(),
         motherAge: age,
         values,
+        skipReasons,
       });
       // Registration details ride along in the payload; the server uses them
       // for the match ladder (NIK → phone → name-in-village) it runs on arrival.

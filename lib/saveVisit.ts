@@ -26,8 +26,18 @@ export async function saveAncVisit(args: {
   motherName: string;
   motherAge: number | null;
   values: AncFormValues;
+  /**
+   * Why an expected 10T standard was not done, where she said.
+   *
+   * Stored with the visit rather than derived later, because the reason is
+   * only knowable at the moment of the visit — nobody can reconstruct in
+   * March that the cuff was broken in January. A 6/10 with "stok habis"
+   * against T5 is a fact about the district; a bare 6/10 is a mark against
+   * the midwife, and she will learn to game it.
+   */
+  skipReasons?: Record<string, string>;
 }): Promise<QueuedVisit> {
-  const { identity, memberId, motherName, motherAge, values } = args;
+  const { identity, memberId, motherName, motherAge, values, skipReasons } = args;
   const { visit, clinical } = toEngineInputs(values, motherAge);
 
   const quality = score10T(visit as any);
@@ -47,7 +57,14 @@ export async function saveAncVisit(args: {
     // Every field as entered, including the ones the engine does not read.
     // The server maps them explicitly; keeping the raw set means a field added
     // to the form later is not lost by an older client.
-    data: { ...values },
+    data: {
+      ...values,
+      skipReasons: skipReasons && Object.keys(skipReasons).length > 0 ? skipReasons : null,
+      // What the score itself says is missing, stored beside the reasons so
+      // the pair can be read without re-running the engine — and so a later
+      // rule change cannot retroactively alter what she was asked about.
+      expectedButSkipped: quality.expectedButSkipped,
+    },
     qualityScore: quality.score,
     flags: flags.map((f) => ({ type: f.type, severity: f.severity })),
     referNow: referral.refer,

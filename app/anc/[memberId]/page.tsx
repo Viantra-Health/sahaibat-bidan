@@ -64,7 +64,7 @@ export default function AncVisitPage() {
     });
   }, [memberId, router]);
 
-  async function handleSave() {
+  async function handleSave(skipReasons?: Record<string, string>) {
     if (!identity || !record || saving) return;
     setSaving(true);
     try {
@@ -74,6 +74,7 @@ export default function AncVisitPage() {
         motherName: record.name,
         motherAge: record.ageYears,
         values,
+        skipReasons,
       });
       const { clinical } = toEngineInputs(values, record.ageYears);
       const urgency = shouldRefer(generateClinicalFlags(clinical as any)).urgency;
