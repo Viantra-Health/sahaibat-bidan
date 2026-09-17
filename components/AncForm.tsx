@@ -18,6 +18,8 @@
 import { useState, useMemo } from 'react';
 import { score10T, generateClinicalFlags, shouldRefer, calculateBMI } from '@sahaibat/anc-engine';
 import SkipReasons, { type SkipReasonMap } from './SkipReasons';
+import PlanPanel, { EMPTY_PLAN, lineText, type PlanState } from './PlanPanel';
+import { suggestCarePlan, planToFields, type PlanItem } from '@sahaibat/anc-engine';
 import { C, ghostBtn, Section, Row, Hint, Field, Select } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
 
@@ -160,10 +162,20 @@ interface Props {
   values: AncFormValues;
   onChange: (v: AncFormValues) => void;
   /**
-   * Called with why each expected standard was not done, where she gave a
-   * reason. Empty is a perfectly normal answer: the prompt never blocks.
+   * Called with everything the form decided, not just the raw fields:
+   *
+   *   values      the form values with the accepted plan already merged into
+   *               T9 and T10 — what should actually be recorded
+   *   plan        which lines she accepted, declined and edited, kept
+   *               separately because "she considered the referral and said no"
+   *               is a clinical decision worth having in the record
+   *   skipReasons why an expected 10T standard was not done, where she said
    */
-  onSave: (skipReasons?: SkipReasonMap) => void;
+  onSave: (payload?: {
+    values?: AncFormValues;
+    plan?: PlanState;
+    skipReasons?: SkipReasonMap;
+  }) => void;
   saving?: boolean;
 }
 
@@ -171,16 +183,56 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
   const { t, lang } = useLang();
   const [showLabs, setShowLabs] = useState(false);
   const [askingWhy, setAskingWhy] = useState(false);
+  const [plan, setPlan] = useState<PlanState>(EMPTY_PLAN);
   const [skipReasons, setSkipReasons] = useState<SkipReasonMap>({});
   const set = (k: keyof AncFormValues) => (val: string) => onChange({ ...values, [k]: val });
 
   const gw = num(values.gestationalWeeks) ?? 0;
 
-  const { quality, flags, referral, bmi } = useMemo(() => {
-    const { visit, clinical, bmi } = toEngineInputs(values, motherAge);
+  // Findings first. These depend only on the measurements, never on the plan,
+  // which is what keeps the chain below acyclic.
+  const { flags, referral, bmi } = useMemo(() => {
+    const { clinical, bmi } = toEngineInputs(values, motherAge);
     const flags = generateClinicalFlags(clinical as any);
-    return { quality: score10T(visit as any), flags, referral: shouldRefer(flags), bmi };
+    return { flags, referral: shouldRefer(flags), bmi };
   }, [values, motherAge]);
+
+  // The suggested plan follows from the findings, so it recomputes with them.
+  // Due codes are passed as the empty list here: the ANC form does not hold a
+  // register record, and inventing them would let the plan and the what's-due
+  // panel disagree on screen, which is worse than the plan being shorter.
+  const planItems: PlanItem[] = useMemo(
+    () => suggestCarePlan({ flags, gestationalWeeks: gw, due: [] }),
+    [flags, gw],
+  );
+
+  /**
+   * What she actually signed off, as the two fields the record already has.
+   *
+   * Her own typed text wins position: the plan is appended to whatever she
+   * wrote, never the other way round, so a sentence she composed herself is
+   * never buried under six suggestions.
+   */
+  const composed = useMemo(() => {
+    const accepted = planItems
+      .filter((p) => plan.accepted.includes(p.code))
+      .map((p) => ({ ...p, action_id: lineText(p, plan, 'id'), action_en: lineText(p, plan, 'en') }));
+    const { t9, t10 } = planToFields(accepted, lang === 'en' ? 'en' : 'id');
+    const join = (own: string, add: string) =>
+      [own.trim(), add.trim()].filter(Boolean).join('; ');
+    return {
+      caseManagement: join(values.caseManagement, t9),
+      followupPlan:   join(values.followupPlan, t10),
+    };
+  }, [planItems, plan, values.caseManagement, values.followupPlan, lang]);
+
+  // Scored on what will actually be recorded, not on what she typed by hand.
+  // Accepting a management plan genuinely completes T9, and scoring the raw
+  // field would mark her down for using the feature.
+  const quality = useMemo(
+    () => score10T(toEngineInputs({ ...values, ...composed }, motherAge).visit as any),
+    [values, composed, motherAge],
+  );
 
   const emergencies = flags.filter(f => f.severity === 'EMERGENCY');
   const warnings = flags.filter(f => f.severity === 'WARNING');
@@ -304,11 +356,26 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         </Section>
       )}
 
+      {/* The plan sits immediately above the two fields it fills, so the
+          relationship is visible: tick a line, watch it appear below. */}
+      <PlanPanel items={planItems} state={plan} onChange={setPlan} />
+
       <Section title={t('T9–T10 · Tatalaksana & Tindak Lanjut', 'T9–T10 · Management & Follow-up')}>
         <Field label={t('Tatalaksana', 'Management')} value={values.caseManagement} onChange={set('caseManagement')}
           placeholder={t('tindakan yang diberikan', 'care given')} />
+        {/* What the accepted lines will add, shown as a preview rather than
+            typed into the field. Editing them belongs in the panel, where the
+            original wording is still visible beside her change. */}
+        {composed.caseManagement !== values.caseManagement && (
+          <Hint>{t('+ dari rencana: ', '+ from the plan: ')}
+            {composed.caseManagement.slice(values.caseManagement.trim().length).replace(/^;\s*/, '')}</Hint>
+        )}
         <Field label={t('Tindak lanjut', 'Follow-up')} value={values.followupPlan} onChange={set('followupPlan')}
           placeholder={t('kontrol 4 minggu', 'review in 4 weeks')} />
+        {composed.followupPlan !== values.followupPlan && (
+          <Hint>{t('+ dari rencana: ', '+ from the plan: ')}
+            {composed.followupPlan.slice(values.followupPlan.trim().length).replace(/^;\s*/, '')}</Hint>
+        )}
         <Field label={t('Keluhan', 'Complaints')} value={values.complaints} onChange={set('complaints')}
           placeholder={t('jika ada', 'if any')} />
       </Section>
@@ -397,7 +464,7 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
               // is already recorded and the answer is a survey, which nobody
               // fills in. Here it is still part of finishing the visit.
               if (quality.expectedButSkipped.length > 0 && !askingWhy) setAskingWhy(true);
-              else onSave(skipReasons);
+              else onSave({ values: { ...values, ...composed }, plan, skipReasons });
             }}
             disabled={saving}
             style={{
@@ -416,7 +483,7 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
           nameOf={(k) => (T_NAME[k] ? T_NAME[k][lang === 'en' ? 1 : 0] : k)}
           value={skipReasons}
           onChange={setSkipReasons}
-          onConfirm={() => onSave(skipReasons)}
+          onConfirm={() => onSave({ values: { ...values, ...composed }, plan, skipReasons })}
           onCancel={() => setAskingWhy(false)}
           saving={saving}
         />

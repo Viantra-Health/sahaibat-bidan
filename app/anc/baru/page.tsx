@@ -18,6 +18,7 @@ import { normalisePhone, parseNik, isNikShapeValid, nikDisagreements } from '@sa
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
 import { saveAncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
+import type { PlanState } from '@/components/PlanPanel';
 import AncForm, { EMPTY_FORM, toEngineInputs, type AncFormValues } from '@/components/AncForm';
 import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
@@ -81,7 +82,14 @@ export default function NewMotherPage() {
     setStep('visit');
   }
 
-  async function handleSave(skipReasons?: Record<string, string>) {
+  async function handleSave(payload?: {
+    values?: AncFormValues; plan?: PlanState; skipReasons?: Record<string, string>;
+  }) {
+    // The form hands back the values with the accepted care plan already
+    // merged into T9 and T10. Saving `values` from state instead would drop
+    // everything she signed off.
+    const v = payload?.values ?? values;
+    const skipReasons = payload?.skipReasons;
     if (!identity || saving) return;
     setSaving(true);
     try {
@@ -90,8 +98,9 @@ export default function NewMotherPage() {
         memberId: null,             // unresolved — the server matches at sync
         motherName: name.trim(),
         motherAge: age,
-        values,
+        values: v,
         skipReasons,
+        plan: payload?.plan,
       });
       // Registration details ride along in the payload; the server uses them
       // for the match ladder (NIK → phone → name-in-village) it runs on arrival.
@@ -105,7 +114,7 @@ export default function NewMotherPage() {
       const { saveVisit } = await import('@/lib/offlineStore');
       await saveVisit(visit);
 
-      const { clinical } = toEngineInputs(values, age);
+      const { clinical } = toEngineInputs(v, age);
       const urgency = shouldRefer(generateClinicalFlags(clinical as any)).urgency;
       setSaved({ score: visit.qualityScore ?? 0, refer: !!visit.referNow, urgency });
       syncPendingVisits().catch(() => {});

@@ -6,6 +6,7 @@ import { getIdentity, type BidanIdentity } from '@/lib/auth';
 import { getRegisterRecord, type RegisterRecord } from '@/lib/offlineStore';
 import { saveAncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
+import type { PlanState } from '@/components/PlanPanel';
 import AncForm, { EMPTY_FORM, toEngineInputs, type AncFormValues } from '@/components/AncForm';
 import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
@@ -65,7 +66,14 @@ export default function AncVisitPage() {
     });
   }, [memberId, router]);
 
-  async function handleSave(skipReasons?: Record<string, string>) {
+  async function handleSave(payload?: {
+    values?: AncFormValues; plan?: PlanState; skipReasons?: Record<string, string>;
+  }) {
+    // The form hands back the values with the accepted care plan already
+    // merged into T9 and T10. Saving `values` from state instead would drop
+    // everything she signed off.
+    const v = payload?.values ?? values;
+    const skipReasons = payload?.skipReasons;
     if (!identity || !record || saving) return;
     setSaving(true);
     try {
@@ -74,10 +82,11 @@ export default function AncVisitPage() {
         memberId: record.memberId,   // a confirmed identity stays confirmed
         motherName: record.name,
         motherAge: record.ageYears,
-        values,
+        values: v,
         skipReasons,
+        plan: payload?.plan,
       });
-      const { clinical } = toEngineInputs(values, record.ageYears);
+      const { clinical } = toEngineInputs(v, record.ageYears);
       const urgency = shouldRefer(generateClinicalFlags(clinical as any)).urgency;
       setSaved({ score: visit.qualityScore ?? 0, refer: !!visit.referNow, urgency });
       // Best-effort. The visit is already durable in IndexedDB, so a failure

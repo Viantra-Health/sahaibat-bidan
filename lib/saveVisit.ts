@@ -36,8 +36,17 @@ export async function saveAncVisit(args: {
    * the midwife, and she will learn to game it.
    */
   skipReasons?: Record<string, string>;
+  /**
+   * Which suggested plan lines she accepted, declined or edited.
+   *
+   * Kept beside the composed T9/T10 text rather than only inside it, because
+   * "she was offered the referral and declined it" is a clinical decision and
+   * a free-text field cannot be queried for it. A declined referral that later
+   * turns out to have mattered is exactly the case an audit needs to find.
+   */
+  plan?: { accepted: string[]; declined: string[]; edits: Record<string, string> };
 }): Promise<QueuedVisit> {
-  const { identity, memberId, motherName, motherAge, values, skipReasons } = args;
+  const { identity, memberId, motherName, motherAge, values, skipReasons, plan } = args;
   const { visit, clinical } = toEngineInputs(values, motherAge);
 
   const quality = score10T(visit as any);
@@ -64,6 +73,7 @@ export async function saveAncVisit(args: {
       // the pair can be read without re-running the engine — and so a later
       // rule change cannot retroactively alter what she was asked about.
       expectedButSkipped: quality.expectedButSkipped,
+      plan: plan && (plan.accepted.length > 0 || plan.declined.length > 0) ? plan : null,
     },
     qualityScore: quality.score,
     flags: flags.map((f) => ({ type: f.type, severity: f.severity })),
