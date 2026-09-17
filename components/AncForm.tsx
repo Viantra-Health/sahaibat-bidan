@@ -51,8 +51,12 @@ export const EMPTY_FORM: AncFormValues = {
   p4kPendanaan: '', p4kPendamping: '',
 };
 
+// Indonesian keyboards produce a comma. parseFloat('23,5') is 23, and 23 is
+// below the 23.5 cm KEK threshold — so the form would diagnose chronic energy
+// deficiency on a mother who does not have it. The exact bug fixed in the
+// engine and in the other two forms, still live in the most-used one.
 const num = (s: string): number | null => {
-  const v = parseFloat(s);
+  const v = parseFloat(String(s).replace(',', '.'));
   return Number.isFinite(v) ? v : null;
 };
 
