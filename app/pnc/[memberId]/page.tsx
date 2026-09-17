@@ -12,6 +12,7 @@ import ReferralPanel from '@/components/ReferralPanel';
 import { generatePncFlags, shouldReferPnc } from '@sahaibat/anc-engine';
 import { useLang } from '@/lib/lang';
 import AppHeader from '@/components/AppHeader';
+import VisitHistory from '@/components/VisitHistory';
 
 export default function PncVisitPage() {
   const router = useRouter();
@@ -139,6 +140,8 @@ export default function PncVisitPage() {
         background: 'none', border: 'none', color: 'rgba(255,255,255,.5)',
         fontSize: 13, padding: 0, marginBottom: 14, cursor: 'pointer',
       }}>{t('← Kembali', '← Back')}</button>
+
+      <VisitHistory history={record.history} />
 
       <PncForm
         motherName={record.name}

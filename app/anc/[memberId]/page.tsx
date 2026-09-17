@@ -13,6 +13,7 @@ import { generateClinicalFlags, shouldRefer } from '@sahaibat/anc-engine';
 import { ancPlausible, ancImplausibleReason } from '@/lib/search';
 import { useLang } from '@/lib/lang';
 import AppHeader from '@/components/AppHeader';
+import VisitHistory from '@/components/VisitHistory';
 
 /** Weeks elapsed of a 40-week pregnancy, derived from EDD. Saves her retyping
  *  a number the register already knows — and a wrong gestational age silently
@@ -202,6 +203,8 @@ export default function AncVisitPage() {
         background: 'none', border: 'none', color: 'rgba(255,255,255,.5)',
         fontSize: 13, padding: 0, marginBottom: 14, cursor: 'pointer',
       }}>{t('← Kembali', '← Back')}</button>
+
+      <VisitHistory history={record.history} />
 
       <AncForm
         motherName={record.name}

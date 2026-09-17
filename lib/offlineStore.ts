@@ -52,6 +52,17 @@ export interface QueuedVisit {
   syncError?: string;
 }
 
+export interface VisitSummary {
+  kind: 'anc' | 'pnc';
+  date: string;
+  visitType: string | null;
+  context: string | null;      // "28 mgg" | "hari ke-7"
+  issue: string | null;        // what was wrong
+  management: string | null;   // what she did about it
+  followUp: string | null;     // what she planned next
+  vitals: string | null;       // the numbers behind it
+}
+
 export interface RegisterRecord {
   memberId: string;
   familyId: string;
@@ -67,6 +78,16 @@ export interface RegisterRecord {
   motherName: string | null;
   isPregnant: boolean;
   edd: string | null;
+  /**
+   * The last few visits, newest first.
+   *
+   * Carried with the register rather than fetched on tap, because the midwife
+   * who needs it is standing in a village with no signal — and in Indonesia
+   * she is running the whole pregnancy herself, so "what did I find last time
+   * and what did I plan" is the question, not "should I refer".
+   */
+  history?: VisitSummary[];
+
   /** Last recorded P4K, so the checklist carries forward between visits. */
   birthPlan: {
     fasilitas: string | null; transportasi: string | null; donorDarah: string | null;
