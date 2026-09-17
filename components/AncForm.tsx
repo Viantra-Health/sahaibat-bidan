@@ -472,7 +472,16 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
               background: saving ? C.accentMuted : C.teal,
               color: saving ? C.dim : C.onAccent, border: 'none', cursor: saving ? 'default' : 'pointer',
             }}>
-            {saving ? t('Menyimpan…', 'Saving…') : t('Simpan kunjungan', 'Save visit')}
+            {saving
+              ? t('Menyimpan…', 'Saving…')
+              : (planItems.length > 0 && plan.accepted.length + plan.declined.length === 0)
+                // Named rather than blocked. She may have every reason to skip
+                // the plan, and a button that refuses her is a button she
+                // stops trusting — but an untouched plan should not slip past
+                // silently either, because the record will say she did none
+                // of it and that will be true.
+                ? t('Simpan tanpa rencana asuhan', 'Save without a care plan')
+                : t('Simpan kunjungan', 'Save visit')}
           </button>
         </div>
       </div>

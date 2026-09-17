@@ -34,9 +34,45 @@ export interface PlanState {
   accepted: string[];
   declined: string[];
   edits: Record<string, string>;
+  /** Why she declined a line. Optional, always. */
+  declineReasons: Record<string, string>;
 }
 
-export const EMPTY_PLAN: PlanState = { accepted: [], declined: [], edits: {} };
+export const EMPTY_PLAN: PlanState = {
+  accepted: [], declined: [], edits: {}, declineReasons: {},
+};
+
+/**
+ * Why a suggested line was not done.
+ *
+ * THE LAST TWO ARE THE POINT OF THIS LIST.
+ *
+ * Indonesian maternal care reads well on paper and is a great deal messier in
+ * practice, and a national standard written in Jakarta does not always survive
+ * contact with a village in Belu. A midwife who declines a line is usually
+ * right, and the reason is almost never that she could not be bothered:
+ *
+ *   The first four are the SYSTEM failing — no equipment, no stock, no lab
+ *   within reach, and those are procurement findings that nobody currently
+ *   counts anywhere.
+ *
+ *   'tidak_sesuai' and 'tidak_setuju' are her CLINICAL JUDGEMENT, and they are
+ *   deliberately offered as respectable answers rather than buried under
+ *   "lainnya". She has seen this woman; the rule has not. If a line is
+ *   declined as inappropriate across a whole district, the rule is what needs
+ *   revisiting, and that can only be learned if the app makes disagreeing easy
+ *   and records it as a professional opinion instead of a failure.
+ */
+export const DECLINE_REASONS: Array<{ code: string; id: string; en: string }> = [
+  { code: 'tidak_tersedia', id: 'Tidak tersedia di sini',  en: 'Not available here' },
+  { code: 'stok_habis',     id: 'Stok habis',              en: 'Out of stock' },
+  { code: 'terlalu_jauh',   id: 'Terlalu jauh / sulit dijangkau', en: 'Too far to reach' },
+  { code: 'ibu_menolak',    id: 'Ibu menolak',             en: 'She declined' },
+  { code: 'sudah_dilakukan',id: 'Sudah dilakukan sebelumnya', en: 'Already done previously' },
+  { code: 'tidak_sesuai',   id: 'Tidak sesuai kondisi ibu ini', en: 'Not right for this woman' },
+  { code: 'tidak_setuju',   id: 'Saya tidak sependapat',    en: 'I do not agree with this' },
+  { code: 'lainnya',        id: 'Lainnya',                  en: 'Other' },
+];
 
 const CATEGORY_LABEL: Record<string, [string, string]> = {
   rujukan:     ['Rujukan', 'Referral'],
@@ -63,6 +99,7 @@ interface Props {
 export default function PlanPanel({ items, state, onChange }: Props) {
   const { t, lang } = useLang();
   const [editing, setEditing] = useState<string | null>(null);
+  const [asking, setAsking] = useState<string | null>(null);
 
   if (items.length === 0) return null;
 
@@ -73,14 +110,23 @@ export default function PlanPanel({ items, state, onChange }: Props) {
     onChange({ ...state, accepted, declined: state.declined.filter((c) => c !== code) });
   };
   const decline = (code: string) => {
-    const declined = state.declined.includes(code)
-      ? state.declined.filter((c) => c !== code)
-      : [...state.declined, code];
-    onChange({ ...state, declined, accepted: state.accepted.filter((c) => c !== code) });
+    const off = state.declined.includes(code);
+    const declined = off ? state.declined.filter((c) => c !== code) : [...state.declined, code];
+    const reasons = { ...state.declineReasons };
+    if (off) delete reasons[code];          // un-declining drops the reason too
+    onChange({
+      ...state, declined, declineReasons: reasons,
+      accepted: state.accepted.filter((c) => c !== code),
+    });
+    setAsking(off ? null : code);
   };
 
   // Grouped, because a midwife reads a plan the way she writes one: refer
   // first, then what she does, then what she says, then when to come back.
+  // Has she engaged with the plan at all? Used by the footer and by the save
+  // button, so an untouched plan is visible rather than silently empty.
+  const touched = state.accepted.length + state.declined.length;
+
   const order = ['rujukan', 'tatalaksana', 'konseling', 'jadwal'];
   const groups = order
     .map((cat) => ({ cat, list: items.filter((i) => i.category === cat) }))
@@ -169,6 +215,53 @@ export default function PlanPanel({ items, state, onChange }: Props) {
                   </button>
                 </div>
 
+                {/* Offered the moment she crosses a line out, because that is
+                    when she knows why. Asked later it is a survey. */}
+                {asking === p.code && off && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '7px 0 0 43px' }}>
+                    {DECLINE_REASONS.map((r) => {
+                      const on = state.declineReasons[p.code] === r.code;
+                      // Her clinical judgement reads as a professional opinion,
+                      // not as an excuse filed under "other".
+                      const judgement = r.code === 'tidak_sesuai' || r.code === 'tidak_setuju';
+                      return (
+                        <button
+                          key={r.code}
+                          onClick={() => {
+                            const next = { ...state.declineReasons };
+                            if (on) delete next[p.code]; else next[p.code] = r.code;
+                            onChange({ ...state, declineReasons: next });
+                            if (!on) setAsking(null);
+                          }}
+                          style={{
+                            padding: '7px 11px', borderRadius: 999, fontSize: 12.5, minHeight: 36,
+                            border: `1px solid ${on ? C.teal : judgement ? C.ok : C.border}`,
+                            background: on ? C.teal : 'transparent',
+                            color: on ? C.onAccent : judgement ? C.ok : C.dim,
+                            fontWeight: on ? 700 : 500, cursor: 'pointer',
+                          }}
+                        >
+                          {lang === 'en' ? r.en : r.id}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {off && state.declineReasons[p.code] && (
+                  <button
+                    onClick={() => setAsking(asking === p.code ? null : p.code)}
+                    style={{
+                      margin: '4px 0 0 43px', background: 'none', border: 'none', padding: 0,
+                      fontSize: 11.5, color: C.dimmer, cursor: 'pointer', textAlign: 'left',
+                    }}
+                  >
+                    {(() => {
+                      const r = DECLINE_REASONS.find((x) => x.code === state.declineReasons[p.code]);
+                      return r ? `↳ ${lang === 'en' ? r.en : r.id}` : '';
+                    })()}
+                  </button>
+                )}
+
                 {editing === p.code && (
                   <input
                     value={text}
@@ -193,11 +286,11 @@ export default function PlanPanel({ items, state, onChange }: Props) {
         padding: '8px 14px 12px', borderTop: `1px solid ${C.border}`, marginTop: 4,
       }}>
         <span style={{ fontSize: 11.5, color: C.dimmer, lineHeight: 1.5 }}>
-          {state.accepted.length === 0
-            ? t('Belum ada yang dicentang — tidak ada yang akan dicatat sebagai tindakan.',
-                'Nothing ticked yet — nothing will be recorded as care given.')
-            : t(`${state.accepted.length} tindakan akan dicatat atas nama Anda.`,
-                `${state.accepted.length} action${state.accepted.length > 1 ? 's' : ''} will be recorded under your name.`)}
+          {touched === 0
+            ? t('Belum ditinjau. Tidak ada yang akan dicatat sebagai tindakan sampai Anda mencentangnya.',
+                'Not reviewed yet. Nothing is recorded as care until you tick it.')
+            : t(`${state.accepted.length} dicatat · ${state.declined.length} tidak dilakukan. Anda yang menyetujui.`,
+                `${state.accepted.length} recorded · ${state.declined.length} not done. Approved by you.`)}
         </span>
       </div>
     </section>

@@ -44,7 +44,18 @@ export async function saveAncVisit(args: {
    * a free-text field cannot be queried for it. A declined referral that later
    * turns out to have mattered is exactly the case an audit needs to find.
    */
-  plan?: { accepted: string[]; declined: string[]; edits: Record<string, string> };
+  plan?: {
+    accepted: string[]; declined: string[];
+    edits: Record<string, string>;
+    /**
+     * Why she declined a line. The two judgement reasons — "not right for
+     * this woman" and "I do not agree" — are the ones worth reading: a rule
+     * declined as inappropriate across a whole district is a rule that needs
+     * revisiting, and that is only learnable if disagreeing is easy and
+     * recorded as a professional opinion rather than a failure.
+     */
+    declineReasons: Record<string, string>;
+  };
 }): Promise<QueuedVisit> {
   const { identity, memberId, motherName, motherAge, values, skipReasons, plan } = args;
   const { visit, clinical } = toEngineInputs(values, motherAge);
