@@ -88,6 +88,26 @@ export interface RegisterRecord {
    */
   history?: VisitSummary[];
 
+  /**
+   * Totals across the WHOLE pregnancy, not just the visits in `history`.
+   *
+   * history is capped at the last three, which answers "what did I find last
+   * time" but cannot answer "what has still never been done" — and the second
+   * question is the one that leaves a woman anaemic all pregnancy because
+   * every single visit assumed the last one had checked.
+   *
+   * Null for anyone not currently pregnant: these totals would then describe
+   * a pregnancy that has ended.
+   */
+  pregnancy?: {
+    contactsDone: string[];        // 'K1'..'K6', in no particular order
+    ttStatus: string | null;       // most recent non-null
+    lastHb: number | null;
+    lastHbDate: string | null;
+    feTotal: number;               // summed across every visit
+    visits: number;
+  } | null;
+
   /** Last recorded P4K, so the checklist carries forward between visits. */
   birthPlan: {
     fasilitas: string | null; transportasi: string | null; donorDarah: string | null;

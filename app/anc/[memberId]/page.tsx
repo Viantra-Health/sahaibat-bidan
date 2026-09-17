@@ -14,6 +14,7 @@ import { ancPlausible, ancImplausibleReason } from '@/lib/search';
 import { useLang } from '@/lib/lang';
 import AppHeader from '@/components/AppHeader';
 import VisitHistory from '@/components/VisitHistory';
+import DuePanel from '@/components/DuePanel';
 import { C } from '@/components/ui';
 
 /** Weeks elapsed of a 40-week pregnancy, derived from EDD. Saves her retyping
@@ -205,6 +206,10 @@ export default function AncVisitPage() {
         background: 'none', border: 'none', color: C.dim,
         fontSize: 13, padding: 0, marginBottom: 14, cursor: 'pointer',
       }}>{t('← Kembali', '← Back')}</button>
+
+      {/* What is still outstanding comes first: it is the reason she is
+          here. What happened last time is the context for it. */}
+      <DuePanel record={record} />
 
       <VisitHistory history={record.history} />
 
