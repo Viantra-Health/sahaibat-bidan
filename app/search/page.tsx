@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
 import { getRegister, type RegisterRecord } from '@/lib/offlineStore';
 import { syncRegister } from '@/lib/syncClient';
-import { searchRegister, describeRecord, describeLastSeen, dueState, type SearchFilters } from '@/lib/search';
+import { searchRegister, describeRecord, describeLastSeen, dueState, knDueState,
+         newbornDayOfLife, type SearchFilters } from '@/lib/search';
 import PasscodePrompt from '@/components/PasscodePrompt';
 import AppHeader from '@/components/AppHeader';
 import { refreshTargets } from '@/lib/referralTargets';
@@ -128,7 +129,13 @@ export default function SearchPage() {
               the wrong form. The wider target stays antenatal because that
               is the commoner case. */}
           {outcome.hits.map(({ record, why }) => {
-            const due = dueState(record, t);
+            // A newborn is a different patient with a different form, and
+            // until now tapping her row opened an ANTENATAL assessment for a
+            // three-day-old. The delivery record put her in this list; this
+            // is what she is for.
+            const newbornDays = newbornDayOfLife(record);
+            const isNewborn = newbornDays != null;
+            const due = isNewborn ? knDueState(record, t) : dueState(record, t);
             // The rail is the hierarchy: a mother who is overdue reads as
             // different in kind from one who is simply on the list, without
             // needing a second colour or a badge.
@@ -145,7 +152,13 @@ export default function SearchPage() {
               ? (new Date(record.edd).getTime() - Date.now()) / (7 * 86_400_000)
               : null;
             const nearTerm = record.isPregnant && weeksLeft != null && weeksLeft <= 12;
-            const second = nearTerm
+            // A baby has no antenatal or postnatal visit of her own, so both
+            // targets on her row are the same one rather than offering a
+            // second action that cannot apply to her.
+            const primaryHref = isNewborn ? `/kn/${record.memberId}` : `/anc/${record.memberId}`;
+            const second = isNewborn
+              ? { href: `/kn/${record.memberId}`,         label: t('Neonatal', 'Newborn') }
+              : nearTerm
               ? { href: `/persalinan/${record.memberId}`, label: t('Lahir', 'Birth') }
               : { href: `/pnc/${record.memberId}`,        label: t('Nifas', 'Postnatal') };
             return (
@@ -158,7 +171,7 @@ export default function SearchPage() {
               }}
             >
               <button
-                onClick={() => router.push(`/anc/${record.memberId}`)}
+                onClick={() => router.push(primaryHref)}
                 style={{
                   flex: 1, textAlign: 'left', padding: '12px 14px', background: 'none',
                   border: 'none', cursor: 'pointer', color: C.white,

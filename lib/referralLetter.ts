@@ -19,9 +19,17 @@
 // that, and everything above it is an upgrade.
 
 export interface ReferralLetterInput {
-  kind: 'anc' | 'pnc';
+  kind: 'anc' | 'pnc' | 'kn';
   patientName: string;
   ageYears?: number | null;
+  /**
+   * Days, for a newborn. A baby referred at 36 hours old is not "0 tahun",
+   * and the receiving clinic needs the hours, not the years — the age IS the
+   * clinical context for most of what gets a newborn referred.
+   */
+  ageDays?: number | null;
+  /** Whose baby. A newborn is identified by her mother everywhere in Indonesia. */
+  motherName?: string | null;
   village?: string | null;
   bidanName?: string | null;
   facility?: string | null;
@@ -51,9 +59,14 @@ export function buildReferralLetter(input: ReferralLetterInput): string {
   L.push('');
   L.push(`Tanggal      : ${today()}`);
   L.push(`Nama pasien  : ${input.patientName}`);
-  if (input.ageYears != null) L.push(`Umur         : ${input.ageYears} tahun`);
+  if (input.ageDays != null) L.push(`Umur         : ${input.ageDays} hari`);
+  else if (input.ageYears != null) L.push(`Umur         : ${input.ageYears} tahun`);
+  if (input.motherName) L.push(`Nama ibu     : ${input.motherName}`);
   if (input.village) L.push(`Desa         : ${input.village}`);
-  L.push(`Jenis        : ${input.kind === 'anc' ? 'Antenatal (ANC)' : 'Nifas (PNC)'}${input.visitType ? ` — ${input.visitType}` : ''}`);
+  const KIND_LABEL = {
+    anc: 'Antenatal (ANC)', pnc: 'Nifas (PNC)', kn: 'Neonatal (KN)',
+  } as const;
+  L.push(`Jenis        : ${KIND_LABEL[input.kind]}${input.visitType ? ` — ${input.visitType}` : ''}`);
   if (input.context) L.push(`Keterangan   : ${input.context}`);
   L.push('');
 

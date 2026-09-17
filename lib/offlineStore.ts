@@ -18,7 +18,7 @@ const REGISTER = 'register';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type VisitFlow = 'anc' | 'pnc' | 'delivery';
+export type VisitFlow = 'anc' | 'pnc' | 'delivery' | 'kn';
 
 export interface QueuedVisit {
   localId: string;
@@ -32,7 +32,7 @@ export interface QueuedVisit {
   memberId?: string | null;
 
   flow: VisitFlow;
-  visitType: string;              // K1..K6 | KF1..KF4
+  visitType: string;              // K1..K6 | KF1..KF4 | KN1..KN3 | PERSALINAN
   motherName: string;
   gestationalWeeks?: number | null;
   daysPostpartum?: number | null;

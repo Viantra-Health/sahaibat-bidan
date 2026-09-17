@@ -242,3 +242,48 @@ export function describeLastSeen(r: RegisterRecord, t: T = ID, locale = 'id-ID')
     ? t(`Terakhir ${when} — ${r.lastSeenBy}`, `Last seen ${when} — ${r.lastSeenBy}`)
     : t(`Terakhir ${when}`, `Last seen ${when}`);
 }
+
+
+/**
+ * How old this member is in days, when she is young enough for the newborn
+ * flow to be the right one to offer.
+ *
+ * Returns null for anyone else, which is what the row uses to decide whether
+ * tapping opens an antenatal form or a newborn one. Getting this wrong in the
+ * other direction is what the delivery record created: a baby registered on
+ * the day she was born, appearing in the register, and opening an ANC form.
+ *
+ * The window runs to 60 days rather than 28 ON PURPOSE. The neonatal period
+ * ends at 28 and the kader takes over, but that handover is where babies are
+ * lost — the midwife stops and the kader has not started. Nothing here is
+ * revoked on day 29: a late KN3 is still recorded, still counted, and still
+ * better than no contact at all.
+ */
+export function newbornDayOfLife(r: RegisterRecord): number | null {
+  if (!r.dob) return null;
+  if ((r.role ?? '') !== 'anak') return null;
+  const days = Math.floor((Date.now() - new Date(r.dob).getTime()) / 86_400_000);
+  if (!Number.isFinite(days) || days < 0 || days > 60) return null;
+  return days;
+}
+
+/**
+ * Which newborn visit is due, if any.
+ *
+ * Unlike dueState this cannot yet check what has already been done — the
+ * register carries antenatal and postnatal history, not KN — so it reports
+ * the window rather than the gap. That overstates what is outstanding for a
+ * baby already seen today, which is the safe direction to be wrong in.
+ */
+export function knDueState(r: RegisterRecord, t: T = ID): DueState | null {
+  const days = newbornDayOfLife(r);
+  if (days == null) return null;
+
+  if (days <= 2)  return { label: t('KN1 jatuh tempo', 'KN1 due now'), urgency: 'due' };
+  if (days <= 7)  return { label: t('KN2 jatuh tempo', 'KN2 due now'), urgency: 'due' };
+  if (days <= 28) return { label: t('KN3 jatuh tempo', 'KN3 due now'), urgency: 'due' };
+  return {
+    label: t(`Neonatal lewat ${days - 28} hari`, `${days - 28} days past neonatal`),
+    urgency: 'overdue',
+  };
+}

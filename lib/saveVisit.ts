@@ -11,11 +11,13 @@ import {
   score10T, generateClinicalFlags, shouldRefer,
   generatePncFlags, shouldReferPnc,
   generateDeliveryFlags, shouldReferDelivery,
+  generateKnFlags, shouldReferKn,
 } from '@sahaibat/anc-engine';
 import { saveVisit as put, generateLocalId, type QueuedVisit } from './offlineStore';
 import { toEngineInputs, type AncFormValues } from '../components/AncForm';
 import { toPncInput, type PncFormValues } from '../components/PncForm';
 import { toDeliveryInput, type DeliveryFormValues } from '../components/DeliveryForm';
+import { toKnInput, toGrams, type KnFormValues } from '../components/KnForm';
 import type { BidanIdentity } from './auth';
 
 export async function saveAncVisit(args: {
@@ -130,6 +132,65 @@ export async function saveDeliveryVisit(args: {
       // ride along in the spread above so a field added later is not lost.
       babies: input.babies.map((b, i) => ({ ...b, name: values.babies[i]?.name || null })),
     },
+    qualityScore: null,
+    flags: flags.map((f) => ({ type: f.type, severity: f.severity })),
+    referNow: referral.refer,
+    createdAt: new Date().toISOString(),
+    syncStatus: 'pending',
+  };
+
+  await put(record);
+  return record;
+}
+
+/**
+ * A newborn visit.
+ *
+ * memberId is THE BABY, not her mother — every other save in this file passes
+ * the mother. If it is null the server records the visit unattached rather
+ * than matching by name: two babies called "Bayi" in one village would merge
+ * into one child, and a wrong merge is not recoverable the way an unattached
+ * visit is.
+ */
+export async function saveKnVisit(args: {
+  identity: BidanIdentity;
+  memberId: string | null;          // the baby
+  motherMemberId?: string | null;   // context, for the register
+  babyName: string;
+  motherName: string;
+  values: KnFormValues;
+}): Promise<QueuedVisit> {
+  const { identity, memberId, motherMemberId, babyName, motherName, values } = args;
+  const input = toKnInput(values);
+
+  const flags = generateKnFlags(input as any);
+  const referral = shouldReferKn(flags);
+
+  const record: QueuedVisit = {
+    localId: generateLocalId(),
+    profileId: identity.profileId,
+    ngoId: identity.ngoId,
+    memberId,
+    flow: 'kn',
+    visitType: values.visitType,
+    // The mother's name, because the register is searched by "Ibu Sari" long
+    // before anyone remembers what the baby was eventually called.
+    motherName,
+    gestationalWeeks: null,
+    daysPostpartum: null,
+    data: {
+      ...values,
+      ...input,
+      babyName,
+      motherMemberId: motherMemberId ?? null,
+      // Normalised here as well as in the engine input, because the server
+      // reads these two off the raw values and 3,1 kg is not 3 grams.
+      weightGrams: toGrams(values.weightGrams),
+      birthWeightGrams: toGrams(values.birthWeightGrams),
+    },
+    // There is no 10T equivalent for a newborn visit, so this stays null
+    // rather than inventing a number that would be reported as if it meant
+    // the same thing as the antenatal score.
     qualityScore: null,
     flags: flags.map((f) => ({ type: f.type, severity: f.severity })),
     referNow: referral.refer,
