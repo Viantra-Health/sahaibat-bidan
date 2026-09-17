@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { normalisePhone } from '@sahaibat/identity';
+import { normalisePhone, parseNik, isNikShapeValid, nikDisagreements } from '@sahaibat/identity';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
 import { saveAncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
@@ -46,6 +46,7 @@ export default function NewMotherPage() {
   const [dob, setDob] = useState('');
   const [phone, setPhone] = useState('');
   const [kasihOptIn, setKasihOptIn] = useState(false);
+  const [nik, setNik] = useState('');
   const [error, setError] = useState('');
 
   const [values, setValues] = useState<AncFormValues>(EMPTY_FORM);
@@ -58,10 +59,20 @@ export default function NewMotherPage() {
     if (!id) router.replace('/'); else setIdentity(id);
   }, [router]);
 
-  const age = dob ? ageFromDob(dob) : null;
+  // A NIK carries the birth date, so entering one fills in the age without
+  // her typing it twice. What she typed always wins over what we derived.
+  const nikInfo = nik.trim() ? parseNik(nik) : null;
+  const effectiveDob = dob || nikInfo?.dob || '';
+  const age = effectiveDob ? ageFromDob(effectiveDob) : null;
+  const nikBad = nik.trim().length > 0 && !isNikShapeValid(nik);
+  const nikConflicts = nikDisagreements(nik, { dob: dob || null });
 
   function next() {
     if (!name.trim()) { setError(t('Nama ibu wajib diisi.', 'The mother’s name is required.')); return; }
+    if (nikBad) {
+      setError(t('NIK harus 16 angka.', 'NIK must be 16 digits.'));
+      return;
+    }
     if (phone.trim() && !normalisePhone(phone)) {
       setError(t('Nomor HP tidak valid. Contoh: 081234567890', 'Invalid phone number. Example: 081234567890'));
       return;
@@ -84,7 +95,8 @@ export default function NewMotherPage() {
       // Registration details ride along in the payload; the server uses them
       // for the match ladder (NIK → phone → name-in-village) it runs on arrival.
       visit.data = { ...visit.data, _register: {
-          name: name.trim(), dob: dob || null, phone: normalisePhone(phone),
+          name: name.trim(), dob: effectiveDob || null, phone: normalisePhone(phone),
+          nik: isNikShapeValid(nik) ? nik.replace(/\D/g, '') : null,
           // Only ever true when she actually ticked it. The server treats
           // anything else as no consent.
           kasihOptIn: kasihOptIn && !!normalisePhone(phone),
@@ -170,6 +182,28 @@ export default function NewMotherPage() {
         </p>
 
         <Input label={t('Nama ibu', 'Mother’s name')} value={name} onChange={setName} placeholder="Siti Aminah" required />
+        <Input label={t('NIK (opsional)', 'NIK (optional)')} value={nik} onChange={setNik}
+          placeholder="3271045508920001" numeric />
+        {nikBad && (
+          <p style={{ fontSize: 12, color: C.red, margin: '-6px 0 12px', lineHeight: 1.5 }}>
+            {t('NIK harus 16 angka.', 'NIK must be 16 digits.')}
+          </p>
+        )}
+        {/* Structure only. A NIK has no checksum, so this can say the shape is
+            right and the birthday inside it — never that the number is real. */}
+        {nikInfo?.dob && !dob && (
+          <p style={{ fontSize: 12, color: C.ok, margin: '-6px 0 12px', lineHeight: 1.5 }}>
+            {t(`Dari NIK: lahir ${nikInfo.dob}${nikInfo.sex === 'P' ? ', perempuan' : ''}`,
+                `From NIK: born ${nikInfo.dob}${nikInfo.sex === 'P' ? ', female' : ''}`)}
+          </p>
+        )}
+        {nikConflicts.includes('dob') && (
+          <p style={{ fontSize: 12, color: C.amber, margin: '-6px 0 12px', lineHeight: 1.5 }}>
+            {t('Tanggal lahir berbeda dengan NIK — periksa lagi. Tetap bisa disimpan.',
+                'Date of birth differs from the NIK — check it. You can still save.')}
+          </p>
+        )}
+
         <Input label={t('Tanggal lahir', 'Date of birth')} value={dob} onChange={setDob} type="date" />
         {age != null && <p style={{ fontSize: 12, color: C.dim, margin: '-6px 0 12px' }}>Usia {age} tahun</p>}
 
