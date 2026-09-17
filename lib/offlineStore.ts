@@ -18,7 +18,7 @@ const REGISTER = 'register';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type VisitFlow = 'anc' | 'pnc';
+export type VisitFlow = 'anc' | 'pnc' | 'delivery';
 
 export interface QueuedVisit {
   localId: string;

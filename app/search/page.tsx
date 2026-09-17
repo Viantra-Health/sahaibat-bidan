@@ -135,6 +135,19 @@ export default function SearchPage() {
             const rail = due?.urgency === 'overdue' ? C.red
                        : due?.urgency === 'due' ? C.amber
                        : C.border;
+
+            // The second action is contextual rather than a third button. A
+            // row is not wide enough for three targets a thumb can hit, and
+            // the choice is not arbitrary: a woman at 28 weeks or more is far
+            // likelier to be delivering than to need a postnatal visit, and a
+            // woman who has not delivered cannot have one at all.
+            const weeksLeft = record.edd
+              ? (new Date(record.edd).getTime() - Date.now()) / (7 * 86_400_000)
+              : null;
+            const nearTerm = record.isPregnant && weeksLeft != null && weeksLeft <= 12;
+            const second = nearTerm
+              ? { href: `/persalinan/${record.memberId}`, label: t('Lahir', 'Birth') }
+              : { href: `/pnc/${record.memberId}`,        label: t('Nifas', 'Postnatal') };
             return (
               <div
               key={record.memberId}
@@ -176,8 +189,8 @@ export default function SearchPage() {
                 )}
               </button>
               <button
-                onClick={() => router.push(`/pnc/${record.memberId}`)}
-                aria-label={t(`Kunjungan nifas untuk ${record.name}`, `Postnatal visit for ${record.name}`)}
+                onClick={() => router.push(second.href)}
+                aria-label={`${second.label} — ${record.name}`}
                 style={{
                   width: 82, background: C.card2, border: 'none',
                   borderLeft: `1px solid ${C.border}`, color: C.dim,
@@ -187,7 +200,7 @@ export default function SearchPage() {
                 }}
               >
                 <span style={{ fontSize: 15, lineHeight: 1 }}>→</span>
-                {t('Nifas', 'Postnatal')}
+                {second.label}
               </button>
               </div>
             );
