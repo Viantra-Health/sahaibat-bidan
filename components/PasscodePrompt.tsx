@@ -104,7 +104,7 @@ function Pin({ value, onChange, placeholder }: {
       type="password"
       style={{
         flex: 1, padding: '10px 12px', fontSize: 16, borderRadius: 9, letterSpacing: '.3em',
-        background: 'rgba(255,255,255,0.06)', color: C.white,
+        background: C.field, color: C.white,
         border: `1px solid ${C.border}`, outline: 'none',
       }}
     />
@@ -113,11 +113,11 @@ function Pin({ value, onChange, placeholder }: {
 
 const box: React.CSSProperties = {
   padding: '13px 15px', borderRadius: 11, marginBottom: 14,
-  background: 'rgba(2,195,154,0.07)', border: `1px solid rgba(2,195,154,0.28)`,
-  color: '#fff',
+  background: C.accentSoft, border: `1px solid rgba(2,195,154,0.28)`,
+  color: C.white,
 };
 const pill: React.CSSProperties = {
   padding: '8px 14px', borderRadius: 8, background: 'transparent',
-  color: 'rgba(255,255,255,0.55)', fontSize: 13, cursor: 'pointer',
-  border: '1px solid rgba(255,255,255,0.3)',
+  color: C.dim, fontSize: 13, cursor: 'pointer',
+  border: `1px solid ${C.border}`,
 };

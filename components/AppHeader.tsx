@@ -12,6 +12,7 @@
 
 import { C } from './ui';
 import { useLang } from '@/lib/lang';
+import { useTheme } from '@/lib/theme';
 
 export default function AppHeader({
   name, village, right,
@@ -21,6 +22,7 @@ export default function AppHeader({
   right?: React.ReactNode;
 }) {
   const { lang, toggle, t } = useLang();
+  const { theme, toggleTheme } = useTheme();
   // Her stored name is often already "Bidan Yuni Seran". Do not print the
   // role in front of it and say it twice.
   const display = (name ?? '').trim();
@@ -59,6 +61,20 @@ export default function AppHeader({
         {/* Indonesian is the default and the label shows the language you
             would switch TO, which is the convention a bilingual user reads
             fastest. */}
+        {/* Night deliveries are real; a phone in dark mode at noon is not the
+            same thing as working in the dark, so this is her choice and never
+            the system preference. */}
+        <button
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? t('Mode terang', 'Light mode') : t('Mode gelap', 'Dark mode')}
+          style={{
+            fontSize: 13, lineHeight: 1, cursor: 'pointer', padding: '5px 8px',
+            borderRadius: 20, background: 'transparent', color: C.dim,
+            border: `1px solid ${C.border}`,
+          }}
+        >
+          {theme === 'dark' ? '☀' : '☾'}
+        </button>
         <button
           onClick={toggle}
           aria-label={lang === 'en' ? 'Ganti ke Bahasa Indonesia' : 'Switch to English'}

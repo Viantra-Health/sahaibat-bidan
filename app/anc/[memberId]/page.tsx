@@ -14,6 +14,7 @@ import { ancPlausible, ancImplausibleReason } from '@/lib/search';
 import { useLang } from '@/lib/lang';
 import AppHeader from '@/components/AppHeader';
 import VisitHistory from '@/components/VisitHistory';
+import { C } from '@/components/ui';
 
 /** Weeks elapsed of a 40-week pregnancy, derived from EDD. Saves her retyping
  *  a number the register already knows — and a wrong gestational age silently
@@ -117,7 +118,7 @@ export default function AncVisitPage() {
   if (notFound) {
     return (
       <main style={wrap}>
-        <p style={{ color: 'rgba(255,255,255,.6)', lineHeight: 1.6 }}>
+        <p style={{ color: C.dim, lineHeight: 1.6 }}>
           {t('Ibu ini tidak ada di data lokal perangkat. Coba cari lagi, atau daftarkan baru.',
               'She is not in this device’s local data. Search again, or register her as new.')}
         </p>
@@ -139,11 +140,11 @@ export default function AncVisitPage() {
       <main style={wrap}>
         <div style={{ fontSize: 30, marginBottom: 12 }}>⚠️</div>
         <h1 style={{ fontSize: 19, margin: '0 0 8px' }}>{t('Periksa dulu', 'Check first')}</h1>
-        <p style={{ color: 'rgba(255,255,255,.72)', lineHeight: 1.6, margin: '0 0 6px' }}>
+        <p style={{ color: C.white, lineHeight: 1.6, margin: '0 0 6px' }}>
           <strong>{record.name}</strong>{reason ? ` — ${reason}` : ''}
           {record.village ? ` · ${record.village}` : ''}.
         </p>
-        <p style={{ color: 'rgba(255,255,255,.5)', fontSize: 14, lineHeight: 1.6 }}>
+        <p style={{ color: C.dim, fontSize: 14, lineHeight: 1.6 }}>
           {t('Ini bukan profil yang biasa untuk pemeriksaan kehamilan. Lanjutkan hanya jika Anda yakin ini orang yang benar.',
               'This is not a usual profile for an antenatal check. Continue only if you are sure this is the right person.')}
         </p>
@@ -152,7 +153,7 @@ export default function AncVisitPage() {
         </button>
         <button onClick={() => router.replace('/search')} style={{
           marginTop: 12, padding: 13, borderRadius: 11, background: 'transparent',
-          color: 'rgba(255,255,255,.55)', fontSize: 14,
+          color: C.dim, fontSize: 14,
           border: '1px solid rgba(2,195,154,.28)', cursor: 'pointer',
         }}>
           Bukan dia — cari lagi
@@ -166,16 +167,16 @@ export default function AncVisitPage() {
       <main style={wrap}>
         <div style={{ fontSize: 34, marginBottom: 10 }}>✅</div>
         <h1 style={{ fontSize: 21, margin: '0 0 6px' }}>{t('Kunjungan tersimpan', 'Visit saved')}</h1>
-        <p style={{ color: 'rgba(255,255,255,.6)', margin: '0 0 4px', lineHeight: 1.6 }}>
+        <p style={{ color: C.dim, margin: '0 0 4px', lineHeight: 1.6 }}>
           {record.name} · {values.visitType} · skor 10T {saved.score}/10
         </p>
-        <p style={{ color: 'rgba(255,255,255,.4)', fontSize: 13, lineHeight: 1.6 }}>
+        <p style={{ color: C.dimmer, fontSize: 13, lineHeight: 1.6 }}>
           {t('Tersimpan di perangkat. Akan terkirim otomatis saat ada sinyal.',
               'Saved on the device. It will upload automatically when there is signal.')}
         </p>
         {saved.refer && (
           <>
-            <p style={{ color: '#FF6B6B', fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
+            <p style={{ color: C.red, fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
               Rujukan dibuat — pastikan ibu dirujuk hari ini.
             </p>
             <ReferralPanel
@@ -200,7 +201,7 @@ export default function AncVisitPage() {
     <main style={{ padding: 20, maxWidth: 460, margin: '0 auto' }}>
       <AppHeader name={identity.name} village={identity.village} />
       <button onClick={() => router.back()} style={{
-        background: 'none', border: 'none', color: 'rgba(255,255,255,.5)',
+        background: 'none', border: 'none', color: C.dim,
         fontSize: 13, padding: 0, marginBottom: 14, cursor: 'pointer',
       }}>{t('← Kembali', '← Back')}</button>
 
@@ -224,6 +225,6 @@ const wrap: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', justifyContent: 'center',
 };
 const backBtn: React.CSSProperties = {
-  marginTop: 20, padding: 14, borderRadius: 11, background: '#02C39A',
-  color: '#04241E', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer',
+  marginTop: 20, padding: 14, borderRadius: 11, background: C.teal,
+  color: C.onAccent, fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer',
 };

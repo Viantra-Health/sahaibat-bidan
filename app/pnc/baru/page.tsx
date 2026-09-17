@@ -129,7 +129,7 @@ export default function NewPncPage() {
         <p style={{ color: C.dim, margin: '0 0 4px', lineHeight: 1.6 }}>
           {name} · {values.visitType} · hari ke-{values.daysPostpartum || '?'}
         </p>
-        <p style={{ color: 'rgba(255,255,255,.4)', fontSize: 13, lineHeight: 1.6 }}>
+        <p style={{ color: C.dimmer, fontSize: 13, lineHeight: 1.6 }}>
           {t('Ibu baru akan dicocokkan dengan data pusat saat sinkronisasi.',
               'A new mother is matched against central records at sync.')}
         </p>
@@ -189,17 +189,17 @@ export default function NewPncPage() {
             style={{
               display: 'flex', gap: 10, alignItems: 'flex-start', width: '100%',
               textAlign: 'left', padding: '12px 13px', borderRadius: 10, marginBottom: 18,
-              background: kasihOptIn ? 'rgba(2,195,154,0.10)' : 'rgba(255,255,255,0.04)',
+              background: kasihOptIn ? C.accentSoft : C.card2,
               border: `1px solid ${kasihOptIn ? C.teal : C.border}`, cursor: 'pointer',
             }}
           >
             <span style={{
               width: 17, height: 17, borderRadius: 4, flex: '0 0 auto', marginTop: 1,
-              border: `1.5px solid ${kasihOptIn ? C.teal : 'rgba(255,255,255,0.4)'}`,
+              border: `1.5px solid ${kasihOptIn ? C.teal : C.dimmer}`,
               background: kasihOptIn ? C.teal : 'transparent',
-              color: '#04241E', fontSize: 12, fontWeight: 800, lineHeight: '15px', textAlign: 'center',
+              color: C.onAccent, fontSize: 12, fontWeight: 800, lineHeight: '15px', textAlign: 'center',
             }}>{kasihOptIn ? '✓' : ''}</span>
-            <span style={{ fontSize: 12.5, lineHeight: 1.5, color: '#fff' }}>
+            <span style={{ fontSize: 12.5, lineHeight: 1.5, color: C.white }}>
               {t('Daftarkan ibu ke Kasih — pengingat kehamilan dan info kesehatan lewat WhatsApp, gratis.',
                   'Enrol her in Kasih — pregnancy reminders and health information over WhatsApp, free.')}
             </span>
@@ -246,7 +246,7 @@ function Input({ label, value, onChange, placeholder, type, numeric, required }:
         inputMode={numeric ? 'numeric' : undefined}
         style={{
           width: '100%', padding: '12px 14px', fontSize: 16, borderRadius: 10,
-          background: 'rgba(255,255,255,0.06)', color: '#fff',
+          background: C.field, color: C.white,
           border: `1px solid ${C.border}`, outline: 'none',
         }}
       />
@@ -260,9 +260,9 @@ const wrap: React.CSSProperties = {
 };
 const primaryBtn: React.CSSProperties = {
   width: '100%', marginTop: 8, padding: 15, borderRadius: 11, background: C.teal,
-  color: '#04241E', fontWeight: 700, fontSize: 15.5, border: 'none', cursor: 'pointer',
+  color: C.onAccent, fontWeight: 700, fontSize: 15.5, border: 'none', cursor: 'pointer',
 };
 const linkBtn: React.CSSProperties = {
-  background: 'none', border: 'none', color: 'rgba(255,255,255,.5)',
+  background: 'none', border: 'none', color: C.dim,
   fontSize: 13, padding: 0, marginBottom: 14, cursor: 'pointer',
 };

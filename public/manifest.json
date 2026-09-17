@@ -6,8 +6,8 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0D1F1C",
-  "theme_color": "#0F6E56",
+  "background_color": "#FFF8F8",
+  "theme_color": "#8C2F4A",
   "prefer_related_applications": false,
   "categories": [
     "health",

@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import PasscodeGate from '@/components/PasscodeGate';
 import SyncDaemon from '@/components/SyncDaemon';
+import { C } from '@/components/ui';
 
 export const metadata: Metadata = {
   title: 'SahAIbat Bidan',
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0F6E56',
+  themeColor: '#8C2F4A',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -27,7 +28,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id">
-      <body style={{ margin: 0, background: '#0D1F1C', color: '#fff',
+      <body style={{ margin: 0, background: C.bg, color: C.white,
         fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
         WebkitFontSmoothing: 'antialiased', minHeight: '100dvh' }}>
         {/* Wraps everything rather than living at a route: a lock you can
@@ -35,6 +36,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             handset is the whole reason this exists. */}
         {/* Outside the gate on purpose: queued visits must upload whether the
             app is locked, unlocked, or signed out. See SyncDaemon. */}
+        {/* Before React hydrates, or a midwife who chose dark gets a white
+            flash on every launch. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('sahaibat_bidan_theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}`,
+          }}
+        />
         <SyncDaemon />
         <PasscodeGate>{children}</PasscodeGate>
       </body>

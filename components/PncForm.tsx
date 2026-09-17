@@ -114,14 +114,17 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
       </header>
 
       {/* Danger first, above the form, the instant a reading is entered. */}
+      {/* Solid, not a bordered box among bordered boxes. At arm's length in
+          daylight a border is a rectangle; a filled block is an alarm. */}
       {emergencies.length > 0 && (
         <div role="alert" style={{
-          border: `1.5px solid ${C.red}`, borderRadius: 11, padding: '13px 15px',
-          background: 'rgba(255,107,107,0.12)', marginBottom: 14,
+          borderRadius: 11, padding: '14px 16px', marginBottom: 14,
+          background: C.red, color: C.onDanger,
+          boxShadow: '0 2px 10px -4px rgba(179,38,30,.5)',
         }}>
           {emergencies.map((f, i) => (
             <div key={i} style={{
-              fontSize: 13.5, lineHeight: 1.5, color: C.white,
+              fontSize: 13.5, lineHeight: 1.5, fontWeight: 600, color: C.onDanger,
               marginBottom: i < emergencies.length - 1 ? 8 : 0,
             }}>
               {flagMessage(f, lang)}
@@ -210,7 +213,7 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
 
       <div style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, padding: '12px 16px 18px',
-        background: 'linear-gradient(to top, #04241E 62%, rgba(4,36,30,0))',
+        background: 'linear-gradient(to top, var(--on-accent) 62%, rgba(4,36,30,0))',
       }}>
         <div style={{ maxWidth: 560, margin: '0 auto' }}>
           {referral.refer && (
@@ -221,8 +224,8 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
           )}
           <button onClick={onSave} disabled={saving} style={{
             width: '100%', padding: 15, fontSize: 15.5, fontWeight: 700, borderRadius: 11,
-            background: saving ? 'rgba(2,195,154,0.35)' : C.teal,
-            color: saving ? C.dim : '#04241E', border: 'none', cursor: saving ? 'default' : 'pointer',
+            background: saving ? C.accentMuted : C.teal,
+            color: saving ? C.dim : C.onAccent, border: 'none', cursor: saving ? 'default' : 'pointer',
           }}>
             {saving ? t('Menyimpan…', 'Saving…') : t('Simpan kunjungan nifas', 'Save postnatal visit')}
           </button>

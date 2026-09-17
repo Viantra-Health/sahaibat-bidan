@@ -71,7 +71,7 @@ export default function ReferralPanel({ profileId, urgency, onLetter }: {
                 style={{
                   width: '100%', textAlign: 'left', marginBottom: 7, padding: '11px 13px',
                   borderRadius: 10, cursor: 'pointer', color: C.white,
-                  background: active ? 'rgba(2,195,154,0.14)' : 'rgba(255,255,255,0.05)',
+                  background: active ? C.accentSoft : C.card,
                   border: `1px solid ${active ? C.teal : C.border}`,
                   display: 'flex', flexDirection: 'column', gap: 2,
                 }}
@@ -101,7 +101,7 @@ export default function ReferralPanel({ profileId, urgency, onLetter }: {
       <button onClick={onLetter} style={{
         width: '100%', marginTop: 4, padding: 13, borderRadius: 11, background: 'transparent',
         color: C.white, fontWeight: 600, fontSize: 14.5,
-        border: `1px solid ${byRung.length === 0 ? C.teal : 'rgba(255,255,255,0.3)'}`,
+        border: `1px solid ${byRung.length === 0 ? C.teal : C.dimmer}`,
         cursor: 'pointer',
       }}>
         {t('📄 Buat surat rujukan', '📄 Create referral letter')}

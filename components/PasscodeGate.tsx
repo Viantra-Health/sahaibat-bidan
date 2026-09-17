@@ -88,7 +88,7 @@ export default function PasscodeGate({ children }: { children: React.ReactNode }
               'Visits that have not been sent yet will not be lost — they stay on the device and upload automatically when there is signal.')}
         </p>
         <button onClick={handleForgot} style={{
-          padding: 15, borderRadius: 11, background: C.teal, color: '#04241E',
+          padding: 15, borderRadius: 11, background: C.teal, color: C.onAccent,
           fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer',
         }}>
           {t('Hapus PIN & keluar', 'Clear PIN & sign out')}
@@ -166,7 +166,7 @@ function Key({ children, onClick, ...rest }: {
       {...rest}
       style={{
         padding: '17px 0', fontSize: 21, fontWeight: 600, borderRadius: 12,
-        background: 'rgba(255,255,255,0.06)', color: C.white,
+        background: C.field, color: C.white,
         border: `1px solid ${C.border}`, cursor: 'pointer',
       }}
     >

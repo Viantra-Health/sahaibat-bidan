@@ -181,6 +181,58 @@ export function describeRecord(r: RegisterRecord, t: T = ID): string {
   return bits.join(' · ');
 }
 
+/**
+ * What this mother needs, not what she is.
+ *
+ * A row reading "34 th · ATAMBUA" gives a midwife no reason to tap it. The
+ * reason to tap is that K4 is five days late — so the row carries the due
+ * state, and the list can lead with whoever is furthest overdue.
+ *
+ * Derived, never stored: gestational age from EDD against the K-schedule.
+ * Returns null when there is nothing to say, which is most rows most days.
+ */
+export interface DueState {
+  label: string;                 // "K4 terlambat 5 hari"
+  urgency: 'overdue' | 'due' | 'soon';
+}
+
+/** Kemenkes six-contact schedule, as the midpoint week each contact targets. */
+const K_SCHEDULE: Array<{ k: string; from: number; to: number }> = [
+  { k: 'K1', from: 0,  to: 12 },
+  { k: 'K2', from: 13, to: 20 },
+  { k: 'K3', from: 21, to: 28 },
+  { k: 'K4', from: 29, to: 32 },
+  { k: 'K5', from: 33, to: 36 },
+  { k: 'K6', from: 37, to: 40 },
+];
+
+export function dueState(r: RegisterRecord, t: T = ID): DueState | null {
+  if (!r.isPregnant || !r.edd) return null;
+
+  const weeksLeft = (new Date(r.edd).getTime() - Date.now()) / (7 * 86_400_000);
+  if (!Number.isFinite(weeksLeft)) return null;
+  const gw = Math.round(40 - weeksLeft);
+  if (gw <= 0 || gw > 45) return null;
+
+  const band = K_SCHEDULE.find((b) => gw >= b.from && gw <= b.to);
+  if (!band) return null;
+
+  // Did a visit already happen inside this band? history is newest-first.
+  const done = (r.history ?? []).some(
+    (v) => v.kind === 'anc' && (v.visitType ?? '').toUpperCase() === band.k,
+  );
+  if (done) return null;
+
+  const lateWeeks = gw - band.to;
+  if (lateWeeks > 0) {
+    const days = lateWeeks * 7;
+    return { label: t(`${band.k} terlambat ${days} hari`, `${band.k} ${days} days late`), urgency: 'overdue' };
+  }
+  const untilEnd = band.to - gw;
+  if (untilEnd <= 1) return { label: t(`${band.k} jatuh tempo`, `${band.k} due now`), urgency: 'due' };
+  return { label: t(`${band.k} dalam ${untilEnd} minggu`, `${band.k} in ${untilEnd} weeks`), urgency: 'soon' };
+}
+
 export function describeLastSeen(r: RegisterRecord, t: T = ID, locale = 'id-ID'): string | null {
   if (!r.lastSeenAt) return null;
   const when = new Date(r.lastSeenAt).toLocaleDateString(locale, {

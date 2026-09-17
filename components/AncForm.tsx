@@ -185,13 +185,16 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
       {/* Danger first. On WhatsApp the flag block arrives at the end of a long
           reply and can be truncated by the 1500-character cap; here it sits
           above the form and appears the instant the reading is entered. */}
+      {/* Solid, not a bordered box among bordered boxes. At arm's length in
+          daylight a border is a rectangle; a filled block is an alarm. */}
       {emergencies.length > 0 && (
         <div role="alert" style={{
-          border: `1.5px solid ${C.red}`, borderRadius: 11, padding: '13px 15px',
-          background: 'rgba(255,107,107,0.12)', marginBottom: 14,
+          borderRadius: 11, padding: '14px 16px', marginBottom: 14,
+          background: C.red, color: C.onDanger,
+          boxShadow: '0 2px 10px -4px rgba(179,38,30,.5)',
         }}>
           {emergencies.map((f, i) => (
-            <div key={i} style={{ fontSize: 13.5, lineHeight: 1.5, color: C.white, marginBottom: i < emergencies.length - 1 ? 8 : 0 }}>
+            <div key={i} style={{ fontSize: 13.5, lineHeight: 1.5, fontWeight: 600, color: C.onDanger, marginBottom: i < emergencies.length - 1 ? 8 : 0 }}>
               {flagMessage(f, lang)}
             </div>
           ))}
@@ -329,7 +332,7 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
       {warnings.length > 0 && (
         <div style={{
           border: `1px solid ${C.amber}`, borderRadius: 11, padding: '12px 14px',
-          background: 'rgba(255,209,102,0.10)', marginBottom: 14,
+          background: C.amberSoft, marginBottom: 14,
         }}>
           {warnings.map((f, i) => (
             <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: C.white, marginBottom: i < warnings.length - 1 ? 7 : 0 }}>
@@ -371,7 +374,7 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
                 marginLeft: 'auto', fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em',
                 padding: '3px 8px', borderRadius: 4,
                 background: referral.urgency === 'emergency' ? C.red : C.amber,
-                color: '#04241E',
+                color: C.onAccent,
               }}>
                 {referral.urgency === 'emergency' ? t('RUJUK DARURAT', 'REFER NOW') : t('RUJUK', 'REFER')}
               </span>
@@ -379,8 +382,8 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
           </div>
           <button onClick={onSave} disabled={saving} style={{
             width: '100%', padding: 15, fontSize: 15.5, fontWeight: 700, borderRadius: 11,
-            background: saving ? 'rgba(2,195,154,0.35)' : C.teal,
-            color: saving ? C.dim : '#04241E', border: 'none', cursor: saving ? 'default' : 'pointer',
+            background: saving ? C.accentMuted : C.teal,
+            color: saving ? C.dim : C.onAccent, border: 'none', cursor: saving ? 'default' : 'pointer',
           }}>
             {saving ? t('Menyimpan…', 'Saving…') : t('Simpan kunjungan', 'Save visit')}
           </button>

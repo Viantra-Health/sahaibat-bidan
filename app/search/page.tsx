@@ -5,20 +5,13 @@ import { useRouter } from 'next/navigation';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
 import { getRegister, type RegisterRecord } from '@/lib/offlineStore';
 import { syncRegister } from '@/lib/syncClient';
-import { searchRegister, describeRecord, describeLastSeen, type SearchFilters } from '@/lib/search';
+import { searchRegister, describeRecord, describeLastSeen, dueState, type SearchFilters } from '@/lib/search';
 import PasscodePrompt from '@/components/PasscodePrompt';
 import AppHeader from '@/components/AppHeader';
 import { refreshTargets } from '@/lib/referralTargets';
 import { useLang } from '@/lib/lang';
+import { C } from '@/components/ui';
 
-const C = {
-  teal: '#02C39A',
-  white: '#FFFFFF',
-  dim: 'rgba(255,255,255,0.55)',
-  dimmer: 'rgba(255,255,255,0.3)',
-  border: 'rgba(2,195,154,0.28)',
-  card: 'rgba(255,255,255,0.05)',
-};
 
 export default function SearchPage() {
   const router = useRouter();
@@ -73,10 +66,13 @@ export default function SearchPage() {
     <main style={{ padding: 20, maxWidth: 460, margin: '0 auto', minHeight: '100dvh' }}>
       <AppHeader name={identity.name} village={identity.village} />
 
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 21, margin: '0 0 2px' }}>{t('Cari Ibu', 'Find a mother')}</h1>
-        <div style={{ fontSize: 13, color: C.dim }}>
-          {t(`${register.length} warga tersimpan di perangkat ini`, `${register.length} people stored on this device`)}
+      <div style={{ marginBottom: 14 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-.025em', margin: '0 0 2px' }}>
+          {onlyPregnant ? t('Ibu Hamil', 'Pregnant mothers') : t('Warga Desa', 'Village register')}
+        </h1>
+        <div style={{ fontSize: 12.5, color: C.dim }}>
+          {t(`${outcome.total || register.length} tersimpan di perangkat`,
+             `${outcome.total || register.length} stored on this device`)}
         </div>
       </div>
 
@@ -86,9 +82,9 @@ export default function SearchPage() {
         placeholder={t('Ketik nama ibu…', 'Type a mother’s name…')}
         autoFocus
         style={{
-          width: '100%', padding: '13px 15px', fontSize: 16, borderRadius: 12,
-          background: 'rgba(255,255,255,0.06)', color: C.white,
-          border: `1.5px solid ${C.border}`, outline: 'none', marginBottom: 12,
+          width: '100%', minHeight: 48, padding: '13px 15px', fontSize: 16, borderRadius: 12,
+          background: C.field, color: C.white, fontWeight: 600,
+          border: `1.5px solid ${C.fieldLine}`, outline: 'none', marginBottom: 11,
         }}
       />
 
@@ -110,7 +106,7 @@ export default function SearchPage() {
         onClick={() => router.push('/anc/baru')}
         style={{
           width: '100%', padding: '12px 14px', borderRadius: 11, marginBottom: 14,
-          background: 'rgba(2,195,154,0.10)', color: C.teal, fontWeight: 700, fontSize: 14,
+          background: C.accentSoft, color: C.teal, fontWeight: 700, fontSize: 14,
           border: `1px solid rgba(2,195,154,0.45)`, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
         }}
@@ -131,12 +127,20 @@ export default function SearchPage() {
               and guessing from that would send half the postnatal visits to
               the wrong form. The wider target stays antenatal because that
               is the commoner case. */}
-          {outcome.hits.map(({ record, why }) => (
-            <div
+          {outcome.hits.map(({ record, why }) => {
+            const due = dueState(record, t);
+            // The rail is the hierarchy: a mother who is overdue reads as
+            // different in kind from one who is simply on the list, without
+            // needing a second colour or a badge.
+            const rail = due?.urgency === 'overdue' ? C.red
+                       : due?.urgency === 'due' ? C.amber
+                       : C.border;
+            return (
+              <div
               key={record.memberId}
               style={{
-                marginBottom: 9, borderRadius: 11, background: C.card,
-                border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.teal}`,
+                marginBottom: 9, borderRadius: 12, background: C.card,
+                border: `1px solid ${C.border}`, borderLeft: `5px solid ${rail}`,
                 display: 'flex', alignItems: 'stretch', overflow: 'hidden',
               }}
             >
@@ -148,14 +152,17 @@ export default function SearchPage() {
                   display: 'flex', flexDirection: 'column', gap: 3,
                 }}
               >
-                <span style={{ fontWeight: 700, fontSize: 15 }}>{record.name}</span>
+                <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: '-.01em' }}>{record.name}</span>
                 <span style={{ fontSize: 12.5, color: C.dim }}>{describeRecord(record, t)}</span>
-                {record.isPregnant && (
+                {/* The reason to tap this row. */}
+                {due && (
                   <span style={{
-                    fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', color: C.teal,
-                    textTransform: 'uppercase', marginTop: 1,
+                    fontSize: 11, fontWeight: 800, letterSpacing: '.05em', marginTop: 3,
+                    textTransform: 'uppercase',
+                    color: due.urgency === 'overdue' ? C.red
+                         : due.urgency === 'due' ? C.amber : C.ok,
                   }}>
-                    {t('Hamil', 'Pregnant')}
+                    {due.label}
                   </span>
                 )}
                 {describeLastSeen(record, t, lang === 'en' ? 'en-GB' : 'id-ID') && (
@@ -172,7 +179,7 @@ export default function SearchPage() {
                 onClick={() => router.push(`/pnc/${record.memberId}`)}
                 aria-label={t(`Kunjungan nifas untuk ${record.name}`, `Postnatal visit for ${record.name}`)}
                 style={{
-                  width: 82, background: 'rgba(255,255,255,0.04)', border: 'none',
+                  width: 82, background: C.card2, border: 'none',
                   borderLeft: `1px solid ${C.border}`, color: C.dim,
                   fontSize: 11.5, fontWeight: 700, cursor: 'pointer', letterSpacing: '.04em',
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -182,8 +189,9 @@ export default function SearchPage() {
                 <span style={{ fontSize: 15, lineHeight: 1 }}>→</span>
                 {t('Nifas', 'Postnatal')}
               </button>
-            </div>
-          ))}
+              </div>
+            );
+          })}
 
           {/* Never truncate silently: a midwife who cannot see that more exist
               concludes the woman is not registered, and creates a duplicate. */}
@@ -257,8 +265,8 @@ function Chip({ label, on, onClick }: { label: string; on: boolean; onClick: () 
         fontSize: 12.5, fontWeight: 600, padding: '5px 12px', borderRadius: 14,
         cursor: 'pointer',
         background: on ? C.teal : 'transparent',
-        color: on ? '#04241E' : C.dim,
-        border: `1px solid ${on ? C.teal : 'rgba(255,255,255,0.22)'}`,
+        color: on ? C.onAccent : C.dim,
+        border: `1px solid ${on ? C.teal : C.border}`,
       }}
     >
       {label}

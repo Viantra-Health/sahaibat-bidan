@@ -33,7 +33,7 @@ export default function VisitHistory({ history }: { history?: VisitSummary[] }) 
     return (
       <div style={{
         padding: '11px 14px', borderRadius: 11, marginBottom: 14,
-        background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`,
+        background: C.card2, border: `1px solid ${C.border}`,
         fontSize: 12.5, color: C.dim, lineHeight: 1.5,
       }}>
         {t('Belum ada kunjungan tercatat untuk ibu ini.',
@@ -47,7 +47,7 @@ export default function VisitHistory({ history }: { history?: VisitSummary[] }) 
   return (
     <section style={{
       marginBottom: 14, borderRadius: 12, overflow: 'hidden',
-      background: 'rgba(2,195,154,0.06)', border: `1px solid rgba(2,195,154,0.28)`,
+      background: C.accentSoft, border: `1px solid rgba(2,195,154,0.28)`,
     }}>
       <div style={{ padding: '12px 14px' }}>
         <div style={{
@@ -92,7 +92,7 @@ export default function VisitHistory({ history }: { history?: VisitSummary[] }) 
           <button
             onClick={() => setOpen((v) => !v)}
             style={{
-              width: '100%', padding: '9px 14px', background: 'rgba(255,255,255,0.03)',
+              width: '100%', padding: '9px 14px', background: C.card2,
               border: 'none', borderTop: `1px solid rgba(2,195,154,0.2)`,
               color: C.dim, fontSize: 12, cursor: 'pointer', textAlign: 'left',
             }}
@@ -104,8 +104,8 @@ export default function VisitHistory({ history }: { history?: VisitSummary[] }) 
 
           {open && rest.map((v, i) => (
             <div key={i} style={{
-              padding: '11px 14px', borderTop: `1px solid rgba(255,255,255,0.06)`,
-              background: 'rgba(0,0,0,0.12)',
+              padding: '11px 14px', borderTop: `1px solid ${C.border}`,
+              background: C.card2,
             }}>
               <div style={{ fontSize: 11.5, color: C.dim, marginBottom: 5 }}>
                 {[fmtDate(v.date, lang), v.visitType, v.context].filter(Boolean).join(' · ')}
@@ -137,7 +137,7 @@ function Line({ label, value, strong, small }: {
       </span>
       <span style={{
         fontSize: small ? 12 : 13, lineHeight: 1.45,
-        color: strong ? '#fff' : 'rgba(255,255,255,0.78)',
+        color: strong ? C.white : C.dim,
         fontWeight: strong ? 600 : 400,
       }}>
         {value}

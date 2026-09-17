@@ -19,17 +19,108 @@
  * them used the app's stack. */
 input, select, textarea, button { font: inherit; color: inherit; }
 
-/* A dark app with light native controls: the date picker, its calendar popup,
- * and select dropdowns all render light-on-light without this. */
-:root { color-scheme: dark; }
-
 /* Stops the grey flash on every tap on Android, which on a form with this
  * many controls reads as lag. */
 * { -webkit-tap-highlight-color: transparent; }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PALETTE — "Buku Merah Muda", with field discipline.
+ *
+ * The Buku KIA is the pink book every Indonesian mother carries and every
+ * midwife writes in. Looking like it means she understands the app before
+ * anyone trains her, and a mother recognises it when the screen is turned
+ * toward her.
+ *
+ * LIGHT IS THE DEFAULT, and that is a legibility decision rather than a taste
+ * one. A Posyandu runs mid-morning in a yard; home visits are outdoors. A dark
+ * interface has less luminance to start with, so under glare a translucent
+ * card stops being distinguishable from the ground and the screen flattens.
+ * Dark survives as the option, for night deliveries.
+ *
+ * THREE COLOURS, THREE JOBS, never overlapping:
+ *   --accent  deep rose   the book, chrome, primary action
+ *   --ok      forest      done, complete, safe  (also the brand mark)
+ *   --danger  red         emergency, and nothing else ever
+ *
+ * The failure mode of a rose palette is drifting into a consumer pregnancy
+ * app, which would cost the record its standing in front of a Puskesmas. The
+ * discipline that prevents it: heavy type, generous targets, no illustration,
+ * no pastel. Rose is ink here, not decoration.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg:            #FFF8F8;
+  --surface:       #FFFFFF;
+  --surface-2:     #FDF1F4;
+
+  --ink:           #231416;
+  --ink-2:         #6B4A54;
+  --ink-3:         #9C7D87;
+
+  --line:          #F0DDE2;
+  --line-strong:   #E3C7CF;
+
+  --accent:        #8C2F4A;
+  --accent-soft:   #FCE9EE;
+  --on-accent:     #FFFFFF;
+
+  --ok:            #0F6E56;
+  --ok-soft:       #E3F1EC;
+
+  --danger:        #B3261E;
+  --danger-soft:   #FDEAE8;
+  --on-danger:     #FFFFFF;
+
+  --warn:          #8A5D06;
+  --warn-soft:     #FBF0D9;
+
+  --field:         #FFFFFF;
+  --field-line:    #E3C7CF;
+
+  color-scheme: light;
+}
+
+/* Night deliveries are real. Dark is the alternative, not the default —
+ * an explicit choice, never the system preference, because "my phone is in
+ * dark mode" is not "I am working in the dark". */
+:root[data-theme="dark"] {
+  --bg:            #0D1F1C;
+  --surface:       #16302B;
+  --surface-2:     #1B3A33;
+
+  --ink:           #EAF3F0;
+  --ink-2:         rgba(234,243,240,.66);
+  --ink-3:         rgba(234,243,240,.42);
+
+  --line:          rgba(255,255,255,.12);
+  --line-strong:   rgba(255,255,255,.22);
+
+  --accent:        #FF8BA7;
+  --accent-soft:   rgba(255,139,167,.14);
+  --on-accent:     #2B0C16;
+
+  --ok:            #4FC3A8;
+  --ok-soft:       rgba(79,195,168,.14);
+
+  --danger:        #FF6B6B;
+  --danger-soft:   rgba(255,107,107,.16);
+  --on-danger:     #2B0808;
+
+  --warn:          #E8B23C;
+  --warn-soft:     rgba(232,178,60,.14);
+
+  --field:         rgba(255,255,255,.06);
+  --field-line:    rgba(255,255,255,.2);
+
+  color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--ink); }
+
 /* Focus has to stay visible for keyboard and switch-access users; only the
  * default ring on mouse clicks is removed. */
-:focus-visible { outline: 2px solid #02C39A; outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* iOS zooms the page when a font under 16px is focused, which on this form
  * means the layout jumps on every field. The inputs are already 15.5–17px;

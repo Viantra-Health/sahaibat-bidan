@@ -13,6 +13,7 @@ import { generatePncFlags, shouldReferPnc } from '@sahaibat/anc-engine';
 import { useLang } from '@/lib/lang';
 import AppHeader from '@/components/AppHeader';
 import VisitHistory from '@/components/VisitHistory';
+import { C } from '@/components/ui';
 
 export default function PncVisitPage() {
   const router = useRouter();
@@ -86,7 +87,7 @@ export default function PncVisitPage() {
   if (notFound) {
     return (
       <main style={wrap}>
-        <p style={{ color: 'rgba(255,255,255,.6)', lineHeight: 1.6 }}>
+        <p style={{ color: C.dim, lineHeight: 1.6 }}>
           {t('Ibu ini tidak ada di data lokal perangkat. Coba cari lagi, atau daftarkan baru.',
               'She is not in this device’s local data. Search again, or register her as new.')}
         </p>
@@ -102,16 +103,16 @@ export default function PncVisitPage() {
       <main style={wrap}>
         <div style={{ fontSize: 34, marginBottom: 10 }}>✅</div>
         <h1 style={{ fontSize: 21, margin: '0 0 6px' }}>{t('Kunjungan nifas tersimpan', 'Postnatal visit saved')}</h1>
-        <p style={{ color: 'rgba(255,255,255,.6)', margin: '0 0 4px', lineHeight: 1.6 }}>
+        <p style={{ color: C.dim, margin: '0 0 4px', lineHeight: 1.6 }}>
           {record.name} · {values.visitType} · hari ke-{values.daysPostpartum || '?'}
         </p>
-        <p style={{ color: 'rgba(255,255,255,.4)', fontSize: 13, lineHeight: 1.6 }}>
+        <p style={{ color: C.dimmer, fontSize: 13, lineHeight: 1.6 }}>
           {t('Tersimpan di perangkat. Akan terkirim otomatis saat ada sinyal.',
               'Saved on the device. It will upload automatically when there is signal.')}
         </p>
         {saved.refer && (
           <>
-            <p style={{ color: '#FF6B6B', fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
+            <p style={{ color: C.red, fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
               {saved.urgency === 'emergency'
                 ? t('RUJUKAN DARURAT — dampingi ibu sekarang.', 'EMERGENCY REFERRAL — stay with her now.')
                 : t('Rujukan dibuat — pastikan ibu dirujuk hari ini.', 'A referral was created — make sure she is referred today.')}
@@ -137,7 +138,7 @@ export default function PncVisitPage() {
     <main style={{ padding: 20, maxWidth: 460, margin: '0 auto' }}>
       <AppHeader name={identity.name} village={identity.village} />
       <button onClick={() => router.back()} style={{
-        background: 'none', border: 'none', color: 'rgba(255,255,255,.5)',
+        background: 'none', border: 'none', color: C.dim,
         fontSize: 13, padding: 0, marginBottom: 14, cursor: 'pointer',
       }}>{t('← Kembali', '← Back')}</button>
 
@@ -160,6 +161,6 @@ const wrap: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', justifyContent: 'center',
 };
 const backBtn: React.CSSProperties = {
-  marginTop: 20, padding: 14, borderRadius: 11, background: '#02C39A',
-  color: '#04241E', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer',
+  marginTop: 20, padding: 14, borderRadius: 11, background: C.teal,
+  color: C.onAccent, fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer',
 };

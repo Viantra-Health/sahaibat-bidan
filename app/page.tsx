@@ -6,16 +6,8 @@ import { normalisePhone } from '@sahaibat/identity';
 import { saveIdentity, isLoggedIn } from '@/lib/auth';
 import { syncRegister } from '@/lib/syncClient';
 import { useLang } from '@/lib/lang';
+import { C } from '@/components/ui';
 
-const C = {
-  bg: '#0D1F1C',
-  teal: '#02C39A',
-  white: '#FFFFFF',
-  dim: 'rgba(255,255,255,0.55)',
-  dimmer: 'rgba(255,255,255,0.28)',
-  border: 'rgba(2,195,154,0.28)',
-  red: '#FF6B6B',
-};
 
 export default function LoginPage() {
   const [phone, setPhone] = useState('');
@@ -130,7 +122,7 @@ export default function LoginPage() {
         placeholder="081234567890"
         style={{
           width: '100%', padding: '14px 16px', fontSize: 17, borderRadius: 12,
-          background: 'rgba(255,255,255,0.06)', color: C.white,
+          background: C.field, color: C.white,
           border: `1.5px solid ${C.border}`, outline: 'none', marginBottom: 14,
         }}
       />
@@ -146,8 +138,8 @@ export default function LoginPage() {
         disabled={loading || !phone.trim()}
         style={{
           width: '100%', padding: 16, fontSize: 16, fontWeight: 700, borderRadius: 12,
-          background: loading || !phone.trim() ? 'rgba(2,195,154,0.35)' : C.teal,
-          color: loading || !phone.trim() ? C.dim : '#04241E',
+          background: loading || !phone.trim() ? C.accentMuted : C.teal,
+          color: loading || !phone.trim() ? C.dim : C.onAccent,
           border: 'none', cursor: loading || !phone.trim() ? 'default' : 'pointer',
         }}
       >
