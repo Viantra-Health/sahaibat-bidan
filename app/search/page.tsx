@@ -63,8 +63,6 @@ export default function SearchPage() {
     [query, register, filters, t]
   );
 
-  if (!identity) return null;
-
   /* ── WHICH MOTHERS HAVE A VISIT THAT NEVER LANDED ────────────────────────
      Identity is resolved before the visit is written, so a mother whose only
      visit the server then refused still exists in the register — correctly, so
@@ -88,6 +86,8 @@ export default function SearchPage() {
     const timer = setInterval(read, 15000);
     return () => { live = false; clearInterval(timer); };
   }, []);
+
+  if (!identity) return null;
 
   return (
     <main style={{ padding: 20, maxWidth: 460, margin: '0 auto', minHeight: '100dvh' }}>
