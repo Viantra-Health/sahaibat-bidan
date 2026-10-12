@@ -23,6 +23,7 @@ import { suggestCarePlan, planToFields, type PlanItem } from '@sahaibat/anc-engi
 import { C, ghostBtn, Section, Row, Hint, Field, Select } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
 import { checkAnc } from '@/lib/plausibility';
+import ConfirmWarnings from '@/components/ConfirmWarnings';
 
 export interface AncFormValues {
   visitType: string;
@@ -184,6 +185,11 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
   const { t, lang } = useLang();
   const [showLabs, setShowLabs] = useState(false);
   const [askingWhy, setAskingWhy] = useState(false);
+  /* Numbers that cannot be true now take a confirming tap. Three rounds of
+     testing walked straight past the printed warning and saved 900/600 with a
+     weight of 0 -- see components/ConfirmWarnings.tsx for why this confirms
+     rather than blocks. */
+  const [askingValues, setAskingValues] = useState(false);
   const [plan, setPlan] = useState<PlanState>(EMPTY_PLAN);
   const [skipReasons, setSkipReasons] = useState<SkipReasonMap>({});
   const set = (k: keyof AncFormValues) => (val: string) => onChange({ ...values, [k]: val });
@@ -512,7 +518,11 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
               // Ask why BEFORE saving rather than after: afterwards the visit
               // is already recorded and the answer is a survey, which nobody
               // fills in. Here it is still part of finishing the visit.
-              if (quality.expectedButSkipped.length > 0 && !askingWhy) setAskingWhy(true);
+              //
+              // The numbers are questioned first, because a reading that cannot
+              // be true makes every answer below it about the wrong visit.
+              if (implausible.length > 0 && !askingValues) setAskingValues(true);
+              else if (quality.expectedButSkipped.length > 0 && !askingWhy) setAskingWhy(true);
               else onSave({ values: { ...values, ...composed }, plan, skipReasons });
             }}
             disabled={saving}
@@ -534,6 +544,22 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
           </button>
         </div>
       </div>
+
+      {askingValues && (
+        <ConfirmWarnings
+          items={implausible}
+          saving={saving}
+          onCancel={() => setAskingValues(false)}
+          onConfirm={() => {
+            // She has seen them and stands by the reading. Carry on into the
+            // ordinary save path -- including the skipped-items question, which
+            // still has to be asked.
+            setAskingValues(false);
+            if (quality.expectedButSkipped.length > 0) setAskingWhy(true);
+            else onSave({ values: { ...values, ...composed }, plan, skipReasons });
+          }}
+        />
+      )}
 
       {askingWhy && (
         <SkipReasons

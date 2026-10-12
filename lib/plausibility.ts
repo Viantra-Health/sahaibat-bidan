@@ -100,9 +100,35 @@ export function checkAnc(v: {
 export function checkDelivery(v: {
   gestationalWeeks?: unknown; bloodLossMl?: unknown; deliveryDate?: unknown;
   birthWeightG?: unknown;
+  /** Each baby on the form. Only their outcome is read here. */
+  babies?: Array<{ outcome?: unknown }>;
 }): Implausible[] {
   const out: Implausible[] = [];
   const ga = n(v.gestationalWeeks), loss = n(v.bloodLossMl), bw = n(v.birthWeightG);
+
+  /* ── A BABY WITH NO ANSWER IS NOT REGISTERED ──────────────────────────────
+     The server registers a baby as a person only when the outcome is 'hidup'
+     ("only living babies become people" -- bidan-sync). That rule is right:
+     it must not invent a living child from a blank field.
+
+     But the outcome dropdown now starts at "—" rather than defaulting to
+     Hidup, and nothing connected the two. A delivery saved without touching it
+     stored a birth with an empty outcome, registered no baby, and still told
+     her "1 bayi akan terdaftar dan muncul di daftar Kader desa ini." The baby
+     did not exist anywhere she would look for him.
+
+     Blank is the correct default -- a baby's condition at birth is not
+     something to assume. So it is asked for instead. */
+  for (const [i, b] of (v.babies ?? []).entries()) {
+    const o = b?.outcome;
+    if (o === 'hidup' || o === 'mati') continue;
+    const which = (v.babies ?? []).length > 1 ? ` ${i + 1}` : '';
+    out.push({ field: `babies.${i}.outcome`, willBeRefused: true,
+      id: `Keadaan bayi${which} belum dijawab. Bayi ini TIDAK akan terdaftar `
+        + 'dan tidak akan muncul di daftar Kader.',
+      en: `Baby${which}'s condition has not been answered. This baby will NOT be `
+        + 'registered and will not appear in the Kader list.' });
+  }
 
   if (ga !== null && (ga < DELIVERY_WEEKS_MIN || ga > DELIVERY_WEEKS_MAX)) out.push({
     field: 'gestationalWeeks', willBeRefused: true,

@@ -15,7 +15,7 @@ import { getRegisterRecord, type RegisterRecord } from '@/lib/offlineStore';
 import { saveKnVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
 import KnForm, { EMPTY_KN, toKnInput, type KnFormValues } from '@/components/KnForm';
-import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
+import { buildReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
 import { generateKnFlags, shouldReferKn, knForDay } from '@sahaibat/anc-engine';
 import { useLang } from '@/lib/lang';
@@ -174,7 +174,7 @@ export default function KnVisitPage() {
         )}
         <button onClick={() => router.replace('/search')} style={backBtn}>{t('Selesai', 'Done')}</button>
         {/* Rung 4 of the referral ladder, actually visible. */}
-        {letter && <LetterSheet text={letter} onClose={() => setLetter(null)} />}
+        {letter && <LetterSheet text={letter} patientName={babyName} onClose={() => setLetter(null)} />}
       </main>
     );
   }

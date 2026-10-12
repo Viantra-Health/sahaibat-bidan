@@ -8,7 +8,7 @@ import { saveAncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
 import type { PlanState } from '@/components/PlanPanel';
 import AncForm, { EMPTY_FORM, toEngineInputs, type AncFormValues } from '@/components/AncForm';
-import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
+import { buildReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
 import { generateClinicalFlags, shouldRefer } from '@sahaibat/anc-engine';
 import { ancPlausible, ancImplausibleReason } from '@/lib/search';
@@ -178,8 +178,6 @@ export default function AncVisitPage() {
         }}>
           Bukan dia — cari lagi
         </button>
-        {/* Rung 4 of the referral ladder, actually visible. */}
-        {letter && <LetterSheet text={letter} onClose={() => setLetter(null)} />}
       </main>
     );
   }
@@ -210,6 +208,12 @@ export default function AncVisitPage() {
           </>
         )}
         <button onClick={() => router.replace('/search')} style={backBtn}>{t('Selesai', 'Done')}</button>
+        {/* Rung 4 of the referral ladder. This MUST sit in the same returned
+            branch as the ReferralPanel above it. handleLetter only sets state;
+            if the sheet is mounted in some other branch the button is silently
+            dead, which is how it shipped -- the letter was built every time and
+            had nowhere to appear. */}
+        {letter && <LetterSheet text={letter} patientName={record.name} onClose={() => setLetter(null)} />}
       </main>
     );
   }

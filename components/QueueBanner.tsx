@@ -37,7 +37,7 @@ export default function QueueBanner() {
      one piece of advice — "re-record it with the gestational age filled in" —
      which was wrong for a stuck delivery that already had one. A banner that
      cannot say which record it means sends her looking through the register. */
-  const [stuck, setStuck] = useState<Array<{ name: string; why: string }>>([]);
+  const [stuck, setStuck] = useState<Array<{ name: string; visitType: string; why: { id: string; en: string } | null }>>([]);
 
   useEffect(() => {
     let live = true;
@@ -45,9 +45,17 @@ export default function QueueBanner() {
       queueCounts().then((v) => { if (live) setC(v); }).catch(() => {});
       getRejectedVisits().then((rows) => {
         if (!live) return;
+        /* ── THE FIELD NAMES WERE ALL WRONG ──────────────────────────────
+           This read memberName, values.motherName and values.babyName. A
+           QueuedVisit has none of them: the fields are `motherName` and
+           `visitType`, both at the top level. So every line fell through to
+           the em-dash fallback and the banner read "— — ...", which is a
+           banner that cannot say which mother it means -- the exact failure
+           it was built to fix. The fallback hid the mistake perfectly. */
         setStuck(rows.slice(0, 5).map((r: any) => ({
-          name: String(r?.memberName ?? r?.values?.motherName ?? r?.values?.babyName ?? '—'),
-          why: String(r?.syncError ?? ''),
+          name: String(r?.motherName || '—'),
+          visitType: String(r?.visitType || ''),
+          why: whyRefused(r),
         })));
       }).catch(() => {});
     };
@@ -91,13 +99,9 @@ export default function QueueBanner() {
             <ul style={{ fontWeight: 400, margin: '6px 0 0', paddingLeft: 18 }}>
               {stuck.map((r, i) => (
                 <li key={i} style={{ marginBottom: 2 }}>
-                  {r.name}
-                  {/^.*gestational_weeks.*$/.test(r.why) && (
-                    <span style={{ opacity: .85 }}>
-                      {t(' — usia kehamilan di luar batas yang diterima',
-                         ' — gestational age outside the accepted range')}
-                    </span>
-                  )}
+                  <strong style={{ fontWeight: 700 }}>{r.name}</strong>
+                  {r.visitType && <span style={{ opacity: .85 }}>{` · ${r.visitType}`}</span>}
+                  {r.why && <span style={{ opacity: .85 }}>{` — ${isEN ? r.why.en : r.why.id}`}</span>}
                 </li>
               ))}
             </ul>
@@ -110,4 +114,37 @@ export default function QueueBanner() {
       )}
     </div>
   );
+}
+
+/* ── WHY IT WAS REFUSED, WITHOUT GUESSING ────────────────────────────────────
+   The old version tested /gestational_weeks/ against the server's message and
+   printed "outside the accepted range" on every match. Two of the five visits
+   stuck on the test device had no gestational age at ALL, which is a different
+   problem with a different fix, and both were told the wrong one.
+
+   So the VALUE decides the sentence, not the column name; the column name only
+   says which field to talk about. Anything we do not recognise shows the
+   server's own words rather than an invented explanation -- a coordinator can
+   act on "violates check constraint", and cannot act on silence. */
+function whyRefused(r: any): { id: string; en: string } | null {
+  const err = String(r?.syncError ?? '').trim();
+  if (!err) return null;
+
+  if (/gestational_weeks/i.test(err)) {
+    const gw = r?.gestationalWeeks;
+    if (gw == null || gw === '') {
+      return {
+        id: 'usia kehamilan tidak diisi',
+        en: 'gestational age was left empty',
+      };
+    }
+    return {
+      id: `usia kehamilan ${gw} minggu di luar batas yang diterima`,
+      en: `a gestational age of ${gw} weeks is outside the accepted range`,
+    };
+  }
+
+  // Not a constraint we have a sentence for. Show what the server said.
+  const short = err.length > 120 ? `${err.slice(0, 117)}…` : err;
+  return { id: short, en: short };
 }

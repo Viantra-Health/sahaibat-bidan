@@ -16,7 +16,7 @@ import { normalisePhone, parseNik, isNikShapeValid, nikDisagreements } from '@sa
 import { savePncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
 import PncForm, { EMPTY_PNC, toPncInput, type PncFormValues } from '@/components/PncForm';
-import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
+import { buildReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
 import { generatePncFlags, shouldReferPnc } from '@sahaibat/anc-engine';
 import { C } from '@/components/ui';
@@ -164,6 +164,12 @@ export default function NewPncPage() {
           </>
         )}
         <button onClick={() => router.replace('/search')} style={primaryBtn}>{t('Selesai', 'Done')}</button>
+        {/* Rung 4 of the referral ladder. This MUST sit in the same returned
+            branch as the ReferralPanel above it. handleLetter only sets state;
+            if the sheet is mounted in some other branch the button is silently
+            dead, which is how it shipped -- the letter was built every time and
+            had nowhere to appear. */}
+        {letter && <LetterSheet text={letter} patientName={name} onClose={() => setLetter(null)} />}
       </main>
     );
   }
@@ -247,8 +253,6 @@ export default function NewPncPage() {
         {error && <p style={{ color: C.red, fontSize: 13.5, marginBottom: 14 }}>{error}</p>}
 
         <button onClick={next} style={primaryBtn}>{t('Lanjut ke pemeriksaan →', 'Continue to the examination →')}</button>
-        {/* Rung 4 of the referral ladder, actually visible. */}
-        {letter && <LetterSheet text={letter} onClose={() => setLetter(null)} />}
       </main>
     );
   }

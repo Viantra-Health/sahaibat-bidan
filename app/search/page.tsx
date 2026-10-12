@@ -13,6 +13,7 @@ import QueueBanner from '@/components/QueueBanner';
 import { getRejectedVisits } from '@/lib/offlineStore';
 import { refreshTargets } from '@/lib/referralTargets';
 import { useLang } from '@/lib/lang';
+import { onRegisterChanged } from '@/lib/registerBus';
 import { C } from '@/components/ui';
 
 
@@ -70,6 +71,16 @@ export default function SearchPage() {
      What was missing is any sign on her row that the visit is gone. The banner
      at the top names her; this marks the row she is on, which is where a
      midwife actually looks for her. */
+  /* ── RE-READ WHEN THE STORE CHANGES ──────────────────────────────────────
+     The mount effect above reads the register once. The upload that refreshes
+     it runs unawaited, so it usually lands AFTER she has already arrived back
+     here -- and a register that is one delivery out of date offers a "Lahir"
+     button for a mother who has given birth, which invites the same birth
+     being recorded twice. This listens instead of polling. */
+  useEffect(() => onRegisterChanged(() => {
+    getRegister().then(setRegister).catch(() => {});
+  }), []);
+
   const [rejectedFor, setRejectedFor] = useState<Set<string>>(new Set());
   useEffect(() => {
     let live = true;

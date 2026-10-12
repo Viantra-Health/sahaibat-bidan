@@ -20,8 +20,9 @@ import { saveAncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
 import type { PlanState } from '@/components/PlanPanel';
 import AncForm, { EMPTY_FORM, toEngineInputs, type AncFormValues } from '@/components/AncForm';
-import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
+import { buildReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
+import LetterSheet from '@/components/LetterSheet';
 import { generateClinicalFlags, shouldRefer } from '@sahaibat/anc-engine';
 import { useLang } from '@/lib/lang';
 import AppHeader from '@/components/AppHeader';
@@ -49,6 +50,11 @@ export default function NewMotherPage() {
   const [kasihOptIn, setKasihOptIn] = useState(false);
   const [nik, setNik] = useState('');
   const [error, setError] = useState('');
+  /* The letter is shown on screen, not just handed to the share sheet. The
+     share sheet does not exist on every handset, and the popup fallback is
+     blocked when it is not a direct user gesture -- so the one rung of the
+     ladder that is meant to always work sometimes did nothing at all. */
+  const [letter, setLetter] = useState<string | null>(null);
 
   const [values, setValues] = useState<AncFormValues>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
@@ -128,7 +134,7 @@ export default function NewMotherPage() {
     if (!identity) return;
     const { clinical } = toEngineInputs(values, age);
     const flags = generateClinicalFlags(clinical as any);
-    shareReferralLetter(buildReferralLetter({
+    setLetter(buildReferralLetter({
       kind: 'anc',
       patientName: name.trim(),
       ageYears: age,
@@ -146,7 +152,7 @@ export default function NewMotherPage() {
         values.complaints || null,
       ].filter(Boolean) as string[],
       reasons: flags.filter((f) => f.referral).map((f) => f.message_id),
-    }), name.trim());
+    }));
   }
 
   if (!identity) return null;
@@ -176,6 +182,12 @@ export default function NewMotherPage() {
           </>
         )}
         <button onClick={() => router.replace('/search')} style={primaryBtn}>{t('Selesai', 'Done')}</button>
+        {/* Rung 4 of the referral ladder. This MUST sit in the same returned
+            branch as the ReferralPanel above it. handleLetter only sets state;
+            if the sheet is mounted in some other branch the button is silently
+            dead, which is how it shipped -- the letter was built every time and
+            had nowhere to appear. */}
+        {letter && <LetterSheet text={letter} patientName={name} onClose={() => setLetter(null)} />}
       </main>
     );
   }

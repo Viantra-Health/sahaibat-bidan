@@ -7,8 +7,9 @@ import { getRegisterRecord, type RegisterRecord } from '@/lib/offlineStore';
 import { savePncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
 import PncForm, { EMPTY_PNC, toPncInput, type PncFormValues } from '@/components/PncForm';
-import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
+import { buildReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
+import LetterSheet from '@/components/LetterSheet';
 import { generatePncFlags, shouldReferPnc } from '@sahaibat/anc-engine';
 import { useLang } from '@/lib/lang';
 import AppHeader from '@/components/AppHeader';
@@ -26,6 +27,11 @@ export default function PncVisitPage() {
   const { t } = useLang();
   const [saved, setSaved] = useState<{ refer: boolean; urgency: string } | null>(null);
   const [notFound, setNotFound] = useState(false);
+  /* The letter is shown on screen, not just handed to the share sheet. The
+     share sheet does not exist on every handset, and the popup fallback is
+     blocked when it is not a direct user gesture -- so the one rung of the
+     ladder that is meant to always work sometimes did nothing at all. */
+  const [letter, setLetter] = useState<string | null>(null);
 
   useEffect(() => {
     const id = getIdentity();
@@ -61,7 +67,7 @@ export default function PncVisitPage() {
   function handleLetter() {
     if (!record || !identity) return;
     const flags = generatePncFlags(toPncInput(values) as any);
-    shareReferralLetter(buildReferralLetter({
+    setLetter(buildReferralLetter({
       kind: 'pnc',
       patientName: record.name,
       ageYears: record.ageYears,
@@ -125,6 +131,12 @@ export default function PncVisitPage() {
           </>
         )}
         <button onClick={() => router.replace('/search')} style={backBtn}>{t('Selesai', 'Done')}</button>
+        {/* Rung 4 of the referral ladder. This MUST sit in the same returned
+            branch as the ReferralPanel above it. handleLetter only sets state;
+            if the sheet is mounted in some other branch the button is silently
+            dead, which is how it shipped -- the letter was built every time and
+            had nowhere to appear. */}
+        {letter && <LetterSheet text={letter} patientName={record.name} onClose={() => setLetter(null)} />}
       </main>
     );
   }

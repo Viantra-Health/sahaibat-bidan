@@ -19,11 +19,12 @@
 //      yet" is not "it was not done", and scolding her on a form she is
 //      completing after a long night is how the form gets abandoned.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { generateDeliveryFlags, shouldReferDelivery, linakes } from '@sahaibat/anc-engine';
 import { C, Section, Row, Hint, Field, Select, Tri } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
-import { todayLocal } from '@/lib/plausibility';
+import { todayLocal, checkDelivery } from '@/lib/plausibility';
+import ConfirmWarnings from '@/components/ConfirmWarnings';
 
 export interface BabyValues {
   outcome: '' | 'hidup' | 'mati';
@@ -147,6 +148,12 @@ interface Props {
 
 export default function DeliveryForm({ motherName, subtitle, values, onChange, onSave, saving }: Props) {
   const { t, lang } = useLang();
+  /* ── THE CHECK THAT EXISTED AND WAS NEVER CALLED ──────────────────────────
+     lib/plausibility.ts has had checkDelivery in it since the warnings went in,
+     and not one caller. So a delivery dated 2026-11-12 saved and uploaded with
+     nothing said, through three rounds of testing, while the function that
+     would have caught it sat one import away. */
+  const [askingValues, setAskingValues] = useState(false);
   const set = <K extends keyof DeliveryFormValues>(k: K) => (val: DeliveryFormValues[K]) =>
     onChange({ ...values, [k]: val });
 
@@ -160,6 +167,14 @@ export default function DeliveryForm({ motherName, subtitle, values, onChange, o
     const flags = generateDeliveryFlags(input as any);
     return { flags, referral: shouldReferDelivery(flags), indicator: linakes(input as any) };
   }, [values]);
+
+  const implausible = useMemo(() => checkDelivery({
+    gestationalWeeks: values.gestationalWeeks,
+    bloodLossMl: values.bloodLossMl,
+    deliveryDate: values.deliveryDate,
+    birthWeightG: values.babies[0]?.weightGrams,
+    babies: values.babies,
+  }), [values.gestationalWeeks, values.bloodLossMl, values.deliveryDate, values.babies]);
 
   const emergencies = flags.filter((f) => f.severity === 'EMERGENCY');
   const warnings = flags.filter((f) => f.severity === 'WARNING');
@@ -333,7 +348,25 @@ export default function DeliveryForm({ motherName, subtitle, values, onChange, o
                 : t('Rujukan akan dibuat', 'A referral will be created')}
             </div>
           )}
-          <button onClick={onSave} disabled={saving} style={{
+          {implausible.length > 0 && (
+            <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
+              {implausible.map((w, i) => (
+                <div key={i} style={{
+                  fontSize: 12.5, lineHeight: 1.45, borderRadius: 9, padding: '8px 10px',
+                  background: w.willBeRefused ? '#FDEAE8' : '#FBF1DC',
+                  border: `1px solid ${w.willBeRefused ? '#B3261E' : '#8A5D06'}`,
+                  color: w.willBeRefused ? '#B3261E' : '#8A5D06',
+                  fontWeight: w.willBeRefused ? 600 : 400,
+                }}>{t(w.id, w.en)}</div>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={() => {
+              if (implausible.length > 0 && !askingValues) setAskingValues(true);
+              else onSave();
+            }}
+            disabled={saving} style={{
             width: '100%', minHeight: 52, padding: 15, fontSize: 15.5, fontWeight: 800,
             borderRadius: 12, background: saving ? C.accentMuted : C.teal,
             color: C.onAccent, border: 'none', cursor: saving ? 'default' : 'pointer',
@@ -342,6 +375,15 @@ export default function DeliveryForm({ motherName, subtitle, values, onChange, o
           </button>
         </div>
       </div>
+
+      {askingValues && (
+        <ConfirmWarnings
+          items={implausible}
+          saving={saving}
+          onCancel={() => setAskingValues(false)}
+          onConfirm={() => { setAskingValues(false); onSave(); }}
+        />
+      )}
     </div>
   );
 }

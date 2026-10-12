@@ -9,7 +9,8 @@ import { syncPendingVisits } from '@/lib/syncClient';
 import DeliveryForm, { EMPTY_DELIVERY, toDeliveryInput, type DeliveryFormValues } from '@/components/DeliveryForm';
 import VisitHistory from '@/components/VisitHistory';
 import AppHeader from '@/components/AppHeader';
-import { buildReferralLetter, shareReferralLetter } from '@/lib/referralLetter';
+import LetterSheet from '@/components/LetterSheet';
+import { buildReferralLetter } from '@/lib/referralLetter';
 import { generateDeliveryFlags, shouldReferDelivery } from '@sahaibat/anc-engine';
 import { useLang } from '@/lib/lang';
 import { C } from '@/components/ui';
@@ -32,8 +33,13 @@ export default function DeliveryPage() {
   const [record, setRecord] = useState<RegisterRecord | null>(null);
   const [values, setValues] = useState<DeliveryFormValues>(EMPTY_DELIVERY);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState<{ refer: boolean; urgency: string; babies: number } | null>(null);
+  const [saved, setSaved] = useState<{ refer: boolean; urgency: string; babies: number; unanswered: number } | null>(null);
   const [notFound, setNotFound] = useState(false);
+  /* The letter is shown on screen, not just handed to the share sheet. On a
+     phone with no share target and no clipboard the old call fell through to
+     a popup, which a browser blocks when it is not a direct user gesture --
+     so the one rung that is supposed to always work sometimes did nothing. */
+  const [letter, setLetter] = useState<string | null>(null);
 
   useEffect(() => {
     const id = getIdentity();
@@ -60,7 +66,16 @@ export default function DeliveryPage() {
       setSaved({
         refer: !!visit.referNow,
         urgency: shouldReferDelivery(flags).urgency,
-        babies: values.babies.filter((b) => b.outcome !== 'mati').length,
+        /* ── COUNT WHAT WILL ACTUALLY BE REGISTERED ──────────────────────────
+           This counted everything that was not marked dead, so a baby whose
+           condition was left at "—" was counted -- and the server registers a
+           baby only when the outcome is 'hidup'. The screen promised "1 bayi
+           akan terdaftar" for a baby that was never created, and nobody would
+           find him by looking.
+
+           'hidup' is the same word the server tests. Not "not dead". */
+        babies: values.babies.filter((b) => b.outcome === 'hidup').length,
+        unanswered: values.babies.filter((b) => b.outcome !== 'hidup' && b.outcome !== 'mati').length,
       });
       syncPendingVisits().catch(() => {});
     } finally {
@@ -71,7 +86,7 @@ export default function DeliveryPage() {
   function handleLetter() {
     if (!record || !identity) return;
     const flags = generateDeliveryFlags(toDeliveryInput(values) as any);
-    shareReferralLetter(buildReferralLetter({
+    setLetter(buildReferralLetter({
       kind: 'pnc',
       patientName: record.name,
       ageYears: record.ageYears,
@@ -88,7 +103,7 @@ export default function DeliveryPage() {
           b.weightGrams ? `Bayi ${i + 1}: ${b.weightGrams} g${b.outcome === 'mati' ? ', lahir mati' : ''}` : null),
       ].filter(Boolean) as string[],
       reasons: flags.filter((f) => f.referral).map((f) => f.message_id),
-    }), record.name);
+    }));
   }
 
   if (notFound) {
@@ -122,6 +137,16 @@ export default function DeliveryPage() {
                `${saved.babies} baby/babies will be registered and appear in this village's Kader list.`)}
           </p>
         )}
+        {/* Said plainly, because the alternative is she looks for a baby that
+            was never created. The birth itself IS recorded either way. */}
+        {saved.unanswered > 0 && (
+          <p style={{ color: C.red, fontSize: 14, lineHeight: 1.6, fontWeight: 600 }}>
+            {t(`${saved.unanswered} bayi tidak didaftarkan karena keadaannya belum dijawab. `
+               + 'Persalinan tetap tercatat. Catat bayi itu lewat "Daftarkan ibu baru" bila perlu.',
+               `${saved.unanswered} baby/babies were not registered because their condition was `
+               + 'not answered. The birth itself is recorded.')}
+          </p>
+        )}
         <p style={{ color: C.dimmer, fontSize: 13, lineHeight: 1.6 }}>
           {t('Tersimpan di perangkat. Akan terkirim otomatis saat ada sinyal.',
              'Saved on the device. It will upload automatically when there is signal.')}
@@ -141,6 +166,10 @@ export default function DeliveryPage() {
         <button onClick={() => router.replace('/search')} style={backBtn}>
           {t('Selesai', 'Done')}
         </button>
+        {/* Rung 4 of the referral ladder. This MUST sit in the same returned
+            branch as the button above it. handleLetter only sets state; if the
+            sheet is mounted in some other branch the button is silently dead. */}
+        {letter && <LetterSheet text={letter} patientName={record.name} onClose={() => setLetter(null)} />}
       </main>
     );
   }

@@ -11,6 +11,8 @@
 //   register       a cache of people, rebuildable from the server at any time.
 //                  Safe to drop and refetch.
 
+import { notifyRegisterChanged } from './registerBus';
+
 const DB_NAME = 'sahaibat_bidan';
 const DB_VERSION = 1;
 const VISITS = 'queued_visits';
@@ -241,13 +243,16 @@ export async function pruneSyncedVisits(days = 30): Promise<number> {
 
 export async function saveRegister(records: RegisterRecord[]): Promise<void> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const t = db.transaction(REGISTER, 'readwrite');
     const store = t.objectStore(REGISTER);
     for (const r of records) store.put(r);
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
   });
+  /* Every register write goes through here, so this is the one place that can
+     tell a screen it is now showing the past. See lib/registerBus.ts. */
+  notifyRegisterChanged();
 }
 
 export async function getRegister(): Promise<RegisterRecord[]> {
