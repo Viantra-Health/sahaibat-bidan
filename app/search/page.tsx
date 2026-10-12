@@ -6,7 +6,7 @@ import { getIdentity, type BidanIdentity } from '@/lib/auth';
 import { getRegister, type RegisterRecord } from '@/lib/offlineStore';
 import { syncRegister } from '@/lib/syncClient';
 import { searchRegister, describeRecord, describeLastSeen, dueState, knDueState,
-         newbornDayOfLife, type SearchFilters } from '@/lib/search';
+         newbornDayOfLife, careFlow, type CareFlow, type SearchFilters } from '@/lib/search';
 import PasscodePrompt from '@/components/PasscodePrompt';
 import AppHeader from '@/components/AppHeader';
 import QueueBanner from '@/components/QueueBanner';
@@ -22,7 +22,12 @@ export default function SearchPage() {
   const [identity, setIdentity] = useState<BidanIdentity | null>(null);
   const [register, setRegister] = useState<RegisterRecord[]>([]);
   const [query, setQuery] = useState('');
-  const [onlyPregnant, setOnlyPregnant] = useState(false);
+  /* ── THE FOUR FLOWS, NOT JUST "HAMIL" ────────────────────────────────────
+     One flow chip existed, so a midwife looking for the babies she owes a KN
+     visit read all 38 rows looking for them. Failed the same test three rounds
+     running. One at a time rather than a multi-select: these are the four
+     reasons she opens this screen, and they are not combined in practice. */
+  const [flow, setFlow] = useState<CareFlow | null>(null);
   const [onlyHome, setOnlyHome] = useState(false);
   const [recentOnly, setRecentOnly] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -52,10 +57,10 @@ export default function SearchPage() {
   const filters: SearchFilters = useMemo(() => ({
     homeRegionId: identity?.regionId ?? null,
     preferPregnant: true,               // this app is about pregnancy
-    onlyPregnant,
+    onlyFlow: flow,
     onlyRegionId: onlyHome ? identity?.regionId ?? null : null,
     seenWithinDays: recentOnly ? 90 : null,
-  }), [identity, onlyPregnant, onlyHome, recentOnly]);
+  }), [identity, flow, onlyHome, recentOnly]);
 
   const outcome = useMemo(
     () => searchRegister(query, register, filters, t),
@@ -106,7 +111,11 @@ export default function SearchPage() {
 
       <div style={{ marginBottom: 14 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-.025em', margin: '0 0 2px' }}>
-          {onlyPregnant ? t('Ibu Hamil', 'Pregnant mothers') : t('Warga Desa', 'Village register')}
+          {flow === 'anc' ? t('Ibu Hamil', 'Pregnant mothers')
+            : flow === 'persalinan' ? t('Mendekati Persalinan', 'Near term')
+            : flow === 'nifas' ? t('Ibu Nifas', 'Postnatal mothers')
+            : flow === 'kn' ? t('Bayi Baru Lahir', 'Newborns')
+            : t('Warga Desa', 'Village register')}
         </h1>
         <div style={{ fontSize: 12.5, color: C.dim }}>
           {t(`${outcome.total || register.length} tersimpan di perangkat`,
@@ -135,7 +144,21 @@ export default function SearchPage() {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 18 }}>
         <Chip on={onlyHome} onClick={() => setOnlyHome((v) => !v)}
           label={identity.village ? `${t('Desa', 'Village')} ${identity.village}` : t('Desa saya', 'My village')} />
-        <Chip on={onlyPregnant} onClick={() => setOnlyPregnant((v) => !v)} label={t('Hamil', 'Pregnant')} />
+        {/* Tapping the active one clears it, so there is always a way back to
+            the whole register without hunting for an "all" chip. */}
+        {(['anc', 'persalinan', 'nifas', 'kn'] as const).map((f) => (
+          <Chip
+            key={f}
+            on={flow === f}
+            onClick={() => setFlow((v) => (v === f ? null : f))}
+            label={
+              f === 'anc' ? t('Hamil', 'Pregnant')
+              : f === 'persalinan' ? t('Mau lahir', 'Near term')
+              : f === 'nifas' ? t('Nifas', 'Postnatal')
+              : t('Bayi', 'Newborn')
+            }
+          />
+        ))}
         <Chip on={recentOnly} onClick={() => setRecentOnly((v) => !v)} label={t('3 bln terakhir', 'Last 3 months')} />
       </div>
 
@@ -200,10 +223,10 @@ export default function SearchPage() {
                Pregnancy decides it now, not proximity to term. The EDD still
                decides the EMPHASIS: near term it leads, earlier it is quieter,
                so a mis-tap at 16 weeks is still unlikely. */
-            const weeksLeft = record.edd
-              ? (new Date(record.edd).getTime() - Date.now()) / (7 * 86_400_000)
-              : null;
-            const nearTerm = record.isPregnant && weeksLeft != null && weeksLeft <= 12;
+            /* The same function the chips filter by -- see careFlow(). This was
+               an inline copy of the rule, which is how a "Nifas" chip comes to
+               list a woman whose own row offers her an antenatal visit. */
+            const nearTerm = careFlow(record) === 'persalinan';
             // A baby has no antenatal or postnatal visit of her own, so both
             // targets on her row are the same one rather than offering a
             // second action that cannot apply to her.

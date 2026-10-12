@@ -13,7 +13,7 @@
 
 import { nameSimilarity, normaliseName } from '@sahaibat/identity';
 import type { RegisterRecord } from './offlineStore';
-import { daysBetween } from './plausibility';
+import { daysBetween, todayLocal } from './plausibility';
 
 export interface SearchFilters {
   /** Her own village. Not a hard filter — a boost, so a neighbouring-village
@@ -25,6 +25,8 @@ export interface SearchFilters {
   onlyPregnant?: boolean;
   onlyRegionId?: number | null;
   seenWithinDays?: number | null;
+  /** One of the four care flows, from careFlow(). Null means all of them. */
+  onlyFlow?: CareFlow | null;
 }
 
 export interface SearchHit {
@@ -106,6 +108,16 @@ export function searchRegister(
   for (const r of register) {
     // ── Hard filters: chips she tapped ──
     if (filters.onlyPregnant && !r.isPregnant) continue;
+    /* A hard filter, like the others: she tapped it. Antenatal deliberately
+       includes the near-term mothers -- they are still antenatal, and a chip
+       that hides them from the antenatal list would be wrong. */
+    if (filters.onlyFlow) {
+      const f = careFlow(r);
+      const match = filters.onlyFlow === 'anc'
+        ? (f === 'anc' || f === 'persalinan')
+        : f === filters.onlyFlow;
+      if (!match) continue;
+    }
     if (filters.onlyRegionId != null && r.regionId !== filters.onlyRegionId) continue;
     if (filters.seenWithinDays != null) {
       const d = daysSince(r.lastSeenAt);
@@ -263,6 +275,58 @@ export function describeLastSeen(r: RegisterRecord, t: T = ID, locale = 'id-ID')
  * revoked on day 29: a late KN3 is still recorded, still counted, and still
  * better than no contact at all.
  */
+/**
+ * Which of the four care flows this person is in, right now.
+ *
+ * WHY THIS IS ONE FUNCTION AND NOT A CHIP PREDICATE
+ *
+ * The register filters offered one flow -- "Hamil" -- so a midwife looking for
+ * the babies she owes a KN visit, or the mothers in their puerperium, had to
+ * read all 38 rows. That has failed the same test three rounds running.
+ *
+ * The row buttons already decided this, inline, in the page. Writing a second
+ * copy for the chips is how a filter comes to disagree with the row it filtered
+ * -- a "Nifas" chip that lists a woman whose row offers her an antenatal visit.
+ * So both read this.
+ *
+ *   kn           she IS a baby, inside the newborn window
+ *   persalinan   pregnant and near term; the birth is the next thing to record
+ *   anc          pregnant, with the pregnancy still the point
+ *   nifas        a woman who is not pregnant and not a child
+ *   null         in none of them -- a child past the newborn window, a man
+ *
+ * `persalinan` is deliberately a subset of pregnancy rather than a separate
+ * state: nothing in the register says a labour has started, and twelve weeks
+ * to term is the same threshold the row uses to decide which action leads.
+ *
+ * NIFAS IS DELIBERATELY WIDER THAN THE PUERPERIUM. The precise rule would be
+ * "delivered within 42 days", and the register does carry deliveries -- but
+ * `history` keeps only the last few visits, so a mother who has since had
+ * three postnatal contacts no longer shows the birth that put her there, and
+ * she would vanish from the list of mothers owed a postnatal visit. For a
+ * FILTER, listing a few women who do not need one is harmless; hiding one who
+ * does is not. So the only thing excluded is who it cannot be.
+ */
+export type CareFlow = 'anc' | 'persalinan' | 'nifas' | 'kn';
+
+export function careFlow(r: RegisterRecord): CareFlow | null {
+  if (newbornDayOfLife(r) != null) return 'kn';
+  if (r.isPregnant) {
+    const weeksLeft = r.edd
+      ? (Date.parse(`${String(r.edd).slice(0, 10)}T00:00:00Z`) - Date.parse(`${todayLocal()}T00:00:00Z`))
+        / (7 * 86_400_000)
+      : null;
+    return weeksLeft != null && weeksLeft <= 12 ? 'persalinan' : 'anc';
+  }
+  /* A three-month-old is in no flow at all. Without this the postnatal filter
+     listed every infant in the village, because "not pregnant and not a
+     newborn" was being read as "a mother". Age is only used to rule out: a
+     record with no age recorded is kept, since the cost of dropping a mother
+     from this list is worse than the cost of one extra row. */
+  const isChild = (r.role ?? '') === 'anak' || (r.ageYears != null && r.ageYears < 10);
+  return isChild ? null : 'nifas';
+}
+
 export function newbornDayOfLife(r: RegisterRecord): number | null {
   if (!r.dob) return null;
   if ((r.role ?? '') !== 'anak') return null;
