@@ -210,6 +210,32 @@ export async function getRejectedVisits(): Promise<QueuedVisit[]> {
 }
 
 /** Counts for the banner on the register: what is waiting, and what is stuck. */
+/**
+ * The most recent birth THIS DEVICE recorded for a mother, synced or not.
+ *
+ * The register is the right source for a birth recorded last week, and the
+ * wrong one for a birth recorded ninety seconds ago: the row has to upload and
+ * come back before the server knows about it. A midwife records the delivery
+ * and opens the postnatal visit immediately -- that is the normal order of her
+ * afternoon, not an edge case -- and asking the register then gets the answer
+ * from before the birth.
+ *
+ * So the queue is asked first. It is the one place that knows what she just
+ * did while she was offline, which is most of the time.
+ */
+export async function getLocalDeliveryDate(memberId: string): Promise<string | null> {
+  if (!memberId) return null;
+  const all = await getAllVisits();
+  const mine = all
+    .filter((v) => v.flow === 'delivery' && v.memberId === memberId)
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  for (const v of mine) {
+    const d = (v.data as any)?.deliveryDate ?? v.visitDate;
+    if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  }
+  return null;
+}
+
 export async function queueCounts(): Promise<{ waiting: number; rejected: number }> {
   const all = await getAllVisits();
   return {
@@ -235,6 +261,34 @@ export async function markVisitRejected(localId: string, error: string): Promise
   const v = await tx<QueuedVisit | undefined>(VISITS, 'readonly', (s) => s.get(localId));
   if (!v) return;
   await saveVisit({ ...v, syncStatus: 'rejected', syncError: error });
+}
+
+/**
+ * Put refused visits back in the queue, once the reason they were refused is gone.
+ *
+ * WHY THIS HAS TO EXIST
+ *
+ * markVisitRejected stops retrying on purpose: the server looked at the visit
+ * and said no, and hammering it gets the same answer. That is right while the
+ * refusal stands. It is wrong the moment the refusal is FIXED.
+ *
+ * Seven visits were stuck on the test device because the server would not
+ * accept a blank gestational age. phase-9k makes it accept one - and without
+ * this, those seven clinical records stay lost for ever, because nothing
+ * would ever ask again. The fix would have helped only future visits, and the
+ * mothers already recorded would have been examined for nothing.
+ *
+ * Non-destructive. A visit whose refusal still stands is simply refused again
+ * and returns here with the same message; nothing is deleted and nothing is
+ * altered except the status and the stale error. So it is always safe to
+ * offer, and it cannot make anything worse.
+ */
+export async function retryRejectedVisits(): Promise<number> {
+  const rejected = await getRejectedVisits();
+  for (const v of rejected) {
+    await saveVisit({ ...v, syncStatus: 'pending', syncError: undefined });
+  }
+  return rejected.length;
 }
 
 /** Synced visits older than `days`. The queue is not an archive — but nothing

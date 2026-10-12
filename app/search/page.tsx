@@ -226,11 +226,22 @@ export default function SearchPage() {
             /* The same function the chips filter by -- see careFlow(). This was
                an inline copy of the rule, which is how a "Nifas" chip comes to
                list a woman whose own row offers her an antenatal visit. */
-            const nearTerm = careFlow(record) === 'persalinan';
+            /* ── ONE ANSWER PER ROW ──────────────────────────────────────
+               careFlow() is what the filter chips use. The row's own second
+               action used an inline copy of the rule, and the row BODY used a
+               third rule entirely -- newborn-or-antenatal -- so tapping the
+               body of a mother who had already delivered opened an antenatal
+               form while the button beside it said Nifas. One call now. */
+            const flow = careFlow(record);
+            const nearTerm = flow === 'persalinan';
             // A baby has no antenatal or postnatal visit of her own, so both
             // targets on her row are the same one rather than offering a
             // second action that cannot apply to her.
-            const primaryHref = isNewborn ? `/kn/${record.memberId}` : `/anc/${record.memberId}`;
+            const primaryHref = isNewborn
+              ? `/kn/${record.memberId}`
+              : flow === 'nifas'
+                ? `/pnc/${record.memberId}`
+                : `/anc/${record.memberId}`;
             const second = isNewborn
               ? { href: `/kn/${record.memberId}`,         label: t('Neonatal', 'Newborn') }
               : record.isPregnant

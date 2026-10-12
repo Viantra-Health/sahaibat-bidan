@@ -24,6 +24,7 @@ import { useState } from 'react';
 import type { VisitSummary } from '@/lib/offlineStore';
 import { C } from './ui';
 import { useLang } from '@/lib/lang';
+import { formatStoredDate } from '@/lib/plausibility';
 
 export default function VisitHistory({ history }: { history?: VisitSummary[] }) {
   const { t, lang } = useLang();
@@ -146,10 +147,11 @@ function Line({ label, value, strong, small }: {
   );
 }
 
-/** Short and local. She reads dates, not timestamps. */
+/** Short and local. She reads dates, not timestamps.
+ *
+ *  A stored visit_date is a CALENDAR DATE and must not be put through a
+ *  timezone conversion -- see formatStoredDate. This read "11 Okt 2026" for a
+ *  visit recorded at 01:00 on the 12th. */
 function fmtDate(iso: string, lang: string): string {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return iso;
-  return d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'id-ID',
-    { day: 'numeric', month: 'short', year: 'numeric' });
+  return formatStoredDate(iso, lang === 'en' ? 'en-GB' : 'id-ID');
 }

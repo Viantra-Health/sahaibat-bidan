@@ -13,7 +13,7 @@
 
 import { nameSimilarity, normaliseName } from '@sahaibat/identity';
 import type { RegisterRecord } from './offlineStore';
-import { daysBetween, todayLocal } from './plausibility';
+import { daysBetween, todayLocal, formatStoredDate } from './plausibility';
 
 export interface SearchFilters {
   /** Her own village. Not a hard filter — a boost, so a neighbouring-village
@@ -251,9 +251,9 @@ export function dueState(r: RegisterRecord, t: T = ID): DueState | null {
 
 export function describeLastSeen(r: RegisterRecord, t: T = ID, locale = 'id-ID'): string | null {
   if (!r.lastSeenAt) return null;
-  const when = new Date(r.lastSeenAt).toLocaleDateString(locale, {
-    day: 'numeric', month: 'short', year: 'numeric',
-  });
+  // Same trap as the visit history: a date-only lastSeenAt is a calendar date,
+  // and converting it from UTC midnight shows the previous day west of UTC.
+  const when = formatStoredDate(r.lastSeenAt, locale);
   return r.lastSeenBy
     ? t(`Terakhir ${when} — ${r.lastSeenBy}`, `Last seen ${when} — ${r.lastSeenBy}`)
     : t(`Terakhir ${when}`, `Last seen ${when}`);

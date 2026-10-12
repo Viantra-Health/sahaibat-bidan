@@ -24,8 +24,9 @@
 // attempt changes nothing, and somebody has to do something. They are coloured
 // and worded differently for that reason, and the refused count never hides.
 
-import { useEffect, useState } from 'react';
-import { queueCounts, getRejectedVisits } from '@/lib/offlineStore';
+import { useCallback, useEffect, useState } from 'react';
+import { queueCounts, getRejectedVisits, retryRejectedVisits } from '@/lib/offlineStore';
+import { syncPendingVisits } from '@/lib/syncClient';
 import { useLang } from '@/lib/lang';
 
 export default function QueueBanner() {
@@ -38,27 +39,30 @@ export default function QueueBanner() {
      which was wrong for a stuck delivery that already had one. A banner that
      cannot say which record it means sends her looking through the register. */
   const [stuck, setStuck] = useState<Array<{ name: string; visitType: string; why: { id: string; en: string } | null }>>([]);
+  const [retrying, setRetrying] = useState(false);
+
+  /* Lifted out of the effect because the retry button needs it too. A local
+     `read` inside the effect left the banner showing the old counts for
+     fifteen seconds after she pressed it, which reads as nothing happening. */
+  const read = useCallback(() => {
+    queueCounts().then(setC).catch(() => {});
+    getRejectedVisits().then((rows) => {
+      /* ── THE FIELD NAMES WERE ALL WRONG ────────────────────────────────
+         This read memberName, values.motherName and values.babyName. A
+         QueuedVisit has none of them: the fields are `motherName` and
+         `visitType`, both at the top level. So every line fell through to the
+         em-dash fallback and the banner read "— — ...", which is a banner that
+         cannot say which mother it means -- the exact failure it was built to
+         fix. The fallback hid the mistake perfectly. */
+      setStuck(rows.slice(0, 5).map((r: any) => ({
+        name: String(r?.motherName || '—'),
+        visitType: String(r?.visitType || ''),
+        why: whyRefused(r),
+      })));
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
-    let live = true;
-    const read = () => {
-      queueCounts().then((v) => { if (live) setC(v); }).catch(() => {});
-      getRejectedVisits().then((rows) => {
-        if (!live) return;
-        /* ── THE FIELD NAMES WERE ALL WRONG ──────────────────────────────
-           This read memberName, values.motherName and values.babyName. A
-           QueuedVisit has none of them: the fields are `motherName` and
-           `visitType`, both at the top level. So every line fell through to
-           the em-dash fallback and the banner read "— — ...", which is a
-           banner that cannot say which mother it means -- the exact failure
-           it was built to fix. The fallback hid the mistake perfectly. */
-        setStuck(rows.slice(0, 5).map((r: any) => ({
-          name: String(r?.motherName || '—'),
-          visitType: String(r?.visitType || ''),
-          why: whyRefused(r),
-        })));
-      }).catch(() => {});
-    };
     read();
     // Cheap, and the number changes under her while the daemon uploads.
     const timer = setInterval(read, 15000);
@@ -66,12 +70,11 @@ export default function QueueBanner() {
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', read);
     return () => {
-      live = false;
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', read);
     };
-  }, []);
+  }, [read]);
 
   if (!c || (c.waiting === 0 && c.rejected === 0)) return null;
 
@@ -107,9 +110,43 @@ export default function QueueBanner() {
             </ul>
           )}
           <div style={{ fontWeight: 400, marginTop: 6 }}>
-            {t('Mencoba lagi tidak akan menolong. Catat ulang kunjungan itu dan perbaiki yang disebut di atas, lalu hubungi koordinator Anda.',
-               'Trying again will not help. Record those visits again, correcting what is named above, then contact your coordinator.')}
+            {t('Perbaiki yang disebut di atas lalu catat ulang kunjungan itu, atau hubungi koordinator Anda.',
+               'Correct what is named above and record those visits again, or contact your coordinator.')}
           </div>
+          {/* ── WHEN THE REASON FOR THE REFUSAL IS FIXED ────────────────────
+              A refused visit is never retried automatically, and that is
+              right while the refusal stands -- the server will just say no
+              again. But a refusal can be FIXED at the other end: the server
+              used to reject a blank gestational age and no longer does. Seven
+              visits were stuck on a test device for exactly that reason, and
+              with no way to ask again those records were lost for good even
+              after the cause was gone.
+
+              Safe to press at any time. A visit whose refusal still stands is
+              refused again with the same message; nothing is deleted. */}
+          <button
+            onClick={async () => {
+              setRetrying(true);
+              try {
+                await retryRejectedVisits();
+                await syncPendingVisits();
+              } finally {
+                setRetrying(false);
+                read();
+              }
+            }}
+            disabled={retrying}
+            style={{
+              marginTop: 9, width: '100%', minHeight: 44, padding: '10px 12px',
+              borderRadius: 9, cursor: retrying ? 'default' : 'pointer',
+              background: 'transparent', color: '#B3261E', fontWeight: 700, fontSize: 13,
+              border: '1px solid #B3261E',
+            }}
+          >
+            {retrying
+              ? t('Mencoba…', 'Trying…')
+              : t('Coba kirim lagi', 'Try sending again')}
+          </button>
         </div>
       )}
     </div>

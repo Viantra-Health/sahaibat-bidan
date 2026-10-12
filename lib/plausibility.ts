@@ -31,6 +31,16 @@ export interface Implausible {
   en: string;
   /** True when the SERVER will refuse this, not merely that it looks odd. */
   willBeRefused?: boolean;
+  /**
+   * Shown, but does not on its own require a confirming tap.
+   *
+   * "I do not know her gestational age" is a legitimate and common answer in
+   * Papua and NTT -- no LMP recall, no prior card, too early for a fundal
+   * height -- not a typo. 900/600 is a typo. Making her confirm the first kind
+   * every time is nagging, and a prompt that nags is a prompt she learns to
+   * tap through, which costs us the one for the second kind.
+   */
+  notice?: boolean;
 }
 
 /** Mirrors `gestational_weeks between 20 and 45` on sahai_deliveries. */
@@ -50,6 +60,32 @@ const n = (v: unknown): number | null => {
 export function todayLocal(d: Date = new Date()): string {
   const p = (x: number) => String(x).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * Render a stored date the way she wrote it, not the way UTC saw it.
+ *
+ * `new Date('2026-10-12')` is UTC MIDNIGHT. Rendering that instant in a local
+ * zone west of UTC gives the day before -- so visits recorded at 01:00 on the
+ * 12th in Toronto were listed under "11 Okt 2026". Indonesia is east of UTC so
+ * it reads correctly there and the bug hides, which is exactly why it survived
+ * four rounds of testing.
+ *
+ * The distinction is the one that keeps coming up here: a CALENDAR DATE
+ * ("2026-10-12") is a day, and must be rendered as that day everywhere; a
+ * TIMESTAMP ("2026-10-12T01:30:00Z") is an instant, and converting it to local
+ * time is correct. So the shape of the string decides, and a date-only string
+ * is built at LOCAL midnight rather than parsed at UTC midnight.
+ */
+export function formatStoredDate(value: unknown, locale = 'id-ID'): string {
+  const s = String(value ?? '').trim();
+  if (!s) return '';
+  const cal = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  const d = cal
+    ? new Date(Number(cal[1]), Number(cal[2]) - 1, Number(cal[3]))
+    : new Date(s);
+  if (!Number.isFinite(d.getTime())) return s;
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function checkAnc(v: {
@@ -82,12 +118,22 @@ export function checkAnc(v: {
   if (hb !== null && (hb < 2 || hb > 25)) out.push({ field: 'labHb',
     id: `Hb ${hb} tidak masuk akal.`, en: `An Hb of ${hb} cannot be right.` });
 
-  // The one the server will actually refuse.
-  if (ga === null) out.push({ field: 'gestationalWeeks', willBeRefused: true,
-    id: 'Usia kehamilan belum diisi. Server tidak akan menerima kunjungan ini, '
-      + 'dan kunjungan akan tertahan di perangkat.',
-    en: 'Gestational age is empty. The server will not accept this visit and it '
-      + 'will be stuck on this device.' });
+  /* ── AN UNKNOWN GESTATIONAL AGE IS A RECORD, NOT AN ERROR ─────────────────
+     This used to say the server would refuse the visit, and it was true: the
+     column was NOT NULL, so the Hb and the blood pressure in the same row were
+     thrown away over one unknown field. sql/phase-9k-gestational-age-optional.sql
+     makes it nullable, because an unknown gestational age is the correct record
+     of what she knows and it is common.
+
+     So this is now a notice about what will be stored, not a warning about
+     losing the visit, and it no longer demands a confirming tap of its own.
+     If phase-9k has NOT been run yet the visit is still refused -- and
+     components/QueueBanner.tsx names it on the register, which is the net. */
+  if (ga === null) out.push({ field: 'gestationalWeeks', notice: true,
+    id: 'Usia kehamilan tidak diisi. Kunjungan tetap tersimpan, dan usia '
+      + 'kehamilan dicatat sebagai tidak diketahui.',
+    en: 'Gestational age is empty. The visit is still saved, and the gestational '
+      + 'age is recorded as unknown.' });
   else if (ga < ANC_WEEKS_MIN || ga > ANC_WEEKS_MAX) out.push({
     field: 'gestationalWeeks', willBeRefused: true,
     id: `Usia kehamilan ${ga} minggu di luar batas yang diterima server (${ANC_WEEKS_MIN}–${ANC_WEEKS_MAX}).`,

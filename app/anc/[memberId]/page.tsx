@@ -198,6 +198,15 @@ export default function AncVisitPage() {
           {/* The same denominator the form showed her, not a rescale. */}
           {record.name} · {values.visitType} · 10T {saved.done}/{saved.of}
         </p>
+        {/* She was told before saving that it would be stored as unknown.
+            Saying it again here is the difference between "I wonder if that
+            went through" and knowing. */}
+        {!values.gestationalWeeks && (
+          <p style={{ color: C.amber, fontSize: 13, lineHeight: 1.6, margin: '0 0 4px' }}>
+            {t('Usia kehamilan dicatat sebagai tidak diketahui.',
+                'The gestational age is recorded as unknown.')}
+          </p>
+        )}
         <p style={{ color: C.dimmer, fontSize: 13, lineHeight: 1.6 }}>
           {t('Tersimpan di perangkat. Akan terkirim otomatis saat ada sinyal.',
               'Saved on the device. It will upload automatically when there is signal.')}

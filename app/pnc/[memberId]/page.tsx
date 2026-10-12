@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
-import { getRegisterRecord, type RegisterRecord } from '@/lib/offlineStore';
+import { getRegisterRecord, getLocalDeliveryDate, type RegisterRecord } from '@/lib/offlineStore';
 import { savePncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
 import PncForm, { EMPTY_PNC, toPncInput, type PncFormValues } from '@/components/PncForm';
@@ -52,11 +52,20 @@ export default function PncVisitPage() {
          daysBetween. Left blank when there is no recorded birth: a guessed day
          is worse than an empty field she will fill in. Editable either way; a
          mother may well arrive on a day the register cannot predict. */
-      const birth = (r.history ?? []).find((h) => h.kind === 'delivery' && h.date);
-      const day = birth ? daysBetween(birth.date) : null;
-      if (day != null && day >= 0) {
-        setValues((v) => ({ ...v, daysPostpartum: String(day) }));
-      }
+      /* The queue first, then the register. A birth recorded minutes ago has
+         not been back from the server yet, and recording the delivery and then
+         the postnatal visit is the ordinary order of her afternoon -- asking
+         only the register got the answer from before the birth. */
+      const fromRegister = (r.history ?? []).find((h) => h.kind === 'delivery' && h.date)?.date ?? null;
+      getLocalDeliveryDate(r.memberId)
+        .catch(() => null)
+        .then((fromQueue) => {
+          const birthDate = fromQueue ?? fromRegister;
+          const day = birthDate ? daysBetween(birthDate) : null;
+          if (day != null && day >= 0) {
+            setValues((v) => ({ ...v, daysPostpartum: String(day) }));
+          }
+        });
     });
   }, [memberId, router]);
 

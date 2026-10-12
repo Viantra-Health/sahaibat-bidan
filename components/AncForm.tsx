@@ -521,7 +521,9 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
               //
               // The numbers are questioned first, because a reading that cannot
               // be true makes every answer below it about the wrong visit.
-              if (implausible.length > 0 && !askingValues) setAskingValues(true);
+              // A notice is shown above the button but does not gate the save:
+              // see Implausible.notice. Only something that cannot be true does.
+              if (implausible.some((w) => !w.notice) && !askingValues) setAskingValues(true);
               else if (quality.expectedButSkipped.length > 0 && !askingWhy) setAskingWhy(true);
               else onSave({ values: { ...values, ...composed }, plan, skipReasons });
             }}

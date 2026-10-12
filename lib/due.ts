@@ -67,8 +67,20 @@ export function gestationalWeeks(r: RegisterRecord): number | null {
  */
 export function suggestedContact(r: RegisterRecord): string | null {
   const gw = gestationalWeeks(r);
-  if (gw == null) return null;
   const done = (r.pregnancy?.contactsDone ?? []).map((k) => k.toUpperCase());
+
+  /* ── NO DUE DATE IS NOT NO INFORMATION ────────────────────────────────────
+     This returned null whenever the EDD was missing, which meant the form fell
+     back to K1 -- and Ratna Dewi Uji, who has no EDD and has already had K1
+     through K6 recorded, opened as K1 every single time. The gestational age
+     is the better signal when we have it, but the contacts she has ALREADY
+     HAD are a signal on their own, and they are the one thing no estimate is
+     needed for. */
+  if (gw == null) {
+    if (done.length === 0) return null;
+    const next = K_SCHEDULE.find((b) => !done.includes(b.k));
+    return next ? next.k : K_SCHEDULE[K_SCHEDULE.length - 1].k;
+  }
 
   // The contact whose window she is in, if it has not been done.
   const band = K_SCHEDULE.find((b) => gw >= b.from && gw <= b.to);

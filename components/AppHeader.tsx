@@ -151,25 +151,38 @@ export default function AppHeader({
               {t('Untuk masuk lagi Anda perlu sinyal sebentar. PIN perangkat juga akan dihapus.',
                  'To sign in again you will need signal briefly. The device PIN is cleared too.')}
             </p>
-            {/* Named before she leaves, not discovered afterwards. */}
-            {queued && (queued.waiting > 0 || queued.rejected > 0) ? (
+            {/* ── WAITING AND REFUSED ARE NOT THE SAME PROMISE ────────────────
+                The first version of this counted them together and said they
+                would "still be sent". A refused visit will never be sent --
+                the server looked at it and said no, and another attempt gets
+                the same answer. Telling her it is on its way is worse than
+                saying nothing, because she stops looking for it. */}
+            {queued && queued.waiting > 0 && (
               <p style={{
-                fontSize: 13.5, lineHeight: 1.6, margin: '0 0 16px', fontWeight: 600,
+                fontSize: 13.5, lineHeight: 1.6, margin: '0 0 10px', fontWeight: 600,
                 borderRadius: 9, padding: '10px 12px',
                 background: '#FBF1DC', border: '1px solid #8A5D06', color: '#8A5D06',
               }}>
-                {t(`${queued.waiting + queued.rejected} kunjungan masih di perangkat ini dan belum masuk catatan. `
-                   + 'Kunjungan itu TIDAK hilang dan tetap terkirim atas nama Anda, tetapi hanya setelah ada yang masuk lagi di perangkat ini. '
-                   + 'Lebih baik cari sinyal dulu.',
-                   `${queued.waiting + queued.rejected} visit(s) are still on this device and not in the record. `
-                   + 'They are NOT lost and will still upload under your name, but only once someone signs in on this device again. '
-                   + 'Better to find a signal first.')}
+                {t(`${queued.waiting} kunjungan menunggu sinyal. Tidak hilang, dan tetap terkirim atas nama Anda — tetapi hanya setelah ada yang masuk lagi di perangkat ini. Lebih baik cari sinyal dulu.`,
+                   `${queued.waiting} visit(s) are waiting for a signal. They are not lost and will still upload under your name — but only once someone signs in on this device again. Better to find a signal first.`)}
               </p>
-            ) : (
+            )}
+            {queued && queued.rejected > 0 && (
+              <p style={{
+                fontSize: 13.5, lineHeight: 1.6, margin: '0 0 10px', fontWeight: 600,
+                borderRadius: 9, padding: '10px 12px',
+                background: '#FDEAE8', border: '1px solid #B3261E', color: '#B3261E',
+              }}>
+                {t(`${queued.rejected} kunjungan DITOLAK server dan tidak akan pernah terkirim. Mencoba lagi tidak menolong. Kunjungan itu harus dicatat ulang — lihat daftarnya di halaman daftar warga, lalu hubungi koordinator Anda.`,
+                   `${queued.rejected} visit(s) were REFUSED by the server and will never be sent. Trying again will not help. They have to be recorded again — the register page names them — then contact your coordinator.`)}
+              </p>
+            )}
+            {queued && queued.waiting === 0 && queued.rejected === 0 && (
               <p style={{ fontSize: 13, color: C.dimmer, lineHeight: 1.6, margin: '0 0 16px' }}>
                 {t('Semua kunjungan sudah terkirim.', 'Every visit has been uploaded.')}
               </p>
             )}
+            <div style={{ height: 6 }} />
             <button onClick={() => setSigningOut(false)} style={{
               width: '100%', minHeight: 50, padding: 14, fontSize: 15, fontWeight: 700,
               borderRadius: 11, background: C.teal, color: C.onAccent,

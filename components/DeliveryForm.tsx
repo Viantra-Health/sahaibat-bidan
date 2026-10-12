@@ -363,7 +363,7 @@ export default function DeliveryForm({ motherName, subtitle, values, onChange, o
           )}
           <button
             onClick={() => {
-              if (implausible.length > 0 && !askingValues) setAskingValues(true);
+              if (implausible.some((w) => !w.notice) && !askingValues) setAskingValues(true);
               else onSave();
             }}
             disabled={saving} style={{
