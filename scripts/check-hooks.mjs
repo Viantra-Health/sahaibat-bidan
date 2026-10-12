@@ -36,15 +36,43 @@ function walk(dir, out = []) {
   return out;
 }
 
-// Strip strings and comments so a `return` inside either is not mistaken for code.
-function scrub(line) {
-  return line
-    .replace(/\\./g, '')
-    .replace(/'[^']*'/g, "''")
-    .replace(/"[^"]*"/g, '""')
-    .replace(/`[^`]*`/g, '``')
-    .replace(/\/\/.*$/, '')
-    .replace(/\/\*.*?\*\//g, '');
+// Strip strings and comments so prose is never read as code.
+//
+// Block comments MUST be tracked across lines. The first version of this check
+// did not, and it reported fifteen findings in a DOK page whose "return" was a
+// comment line reading "return. Opened from the amber note...". A check that
+// cries wolf is a check people switch off, which is worse than not having one.
+function makeScrubber() {
+  let inBlock = false;
+  return function scrub(line) {
+    let out = '';
+    let i = 0;
+    while (i < line.length) {
+      if (inBlock) {
+        const end = line.indexOf('*/', i);
+        if (end === -1) return out;      // whole rest of the line is comment
+        inBlock = false;
+        i = end + 2;
+        continue;
+      }
+      const two = line.slice(i, i + 2);
+      if (two === '/*') { inBlock = true; i += 2; continue; }
+      if (two === '//') break;           // rest of the line is comment
+      const ch = line[i];
+      if (ch === "'" || ch === '"' || ch === '`') {
+        // Skip the literal. An unterminated one ends at the line, which is all
+        // this check needs -- it is looking for statements, not parsing JS.
+        let j = i + 1;
+        while (j < line.length && line[j] !== ch) j += line[j] === '\\' ? 2 : 1;
+        out += ch + ch;
+        i = j + 1;
+        continue;
+      }
+      out += ch;
+      i++;
+    }
+    return out;
+  };
 }
 
 const problems = [];
@@ -60,6 +88,10 @@ for (const file of walk('app').concat(walk('components'))) {
     let depth = 0;
     let started = false;
     let returnedAt = null;
+
+    // A fresh scrubber per component: it re-reads from the component's own
+    // first line, so comment state is always consistent with where it starts.
+    const scrub = makeScrubber();
 
     for (let j = i; j < lines.length; j++) {
       const s = scrub(lines[j]);
