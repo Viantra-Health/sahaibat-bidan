@@ -61,8 +61,14 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!data.found) {
-        setError(t('Nomor belum terdaftar sebagai Bidan. Hubungi koordinator Anda.',
-          'This number is not registered as a midwife. Contact your coordinator.'));
+        /* ── THE REFUSAL MAY NOT CONFIRM A NUMBER ──────────────────────────
+           This used to read "Nomor belum terdaftar sebagai Bidan", which tells
+           the caller the number is NOT registered -- and therefore tells them
+           when one IS. Sign-in is by number alone with no second factor, so
+           that turns this screen into a way to find a working number by trying
+           them. One message for every refusal now. */
+        setError(t('Tidak bisa masuk dengan nomor itu. Periksa nomornya, atau hubungi koordinator Anda.',
+          'Could not sign in with that number. Check it, or contact your coordinator.'));
         setLoading(false);
         return;
       }

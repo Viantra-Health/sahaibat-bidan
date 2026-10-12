@@ -22,6 +22,7 @@ import PlanPanel, { EMPTY_PLAN, lineText, type PlanState } from './PlanPanel';
 import { suggestCarePlan, planToFields, type PlanItem } from '@sahaibat/anc-engine';
 import { C, ghostBtn, Section, Row, Hint, Field, Select } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
+import { checkAnc } from '@/lib/plausibility';
 
 export interface AncFormValues {
   visitType: string;
@@ -189,6 +190,14 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
 
   const gw = num(values.gestationalWeeks) ?? 0;
 
+  // Recomputed as she types, like the clinical flags beside it.
+  const implausible = useMemo(() => checkAnc({
+    weightKg: values.weightKg, bpSystolic: values.bpSystolic,
+    bpDiastolic: values.bpDiastolic, gestationalWeeks: values.gestationalWeeks,
+    lilaCm: values.lilaCm, labHb: values.labHb,
+  }), [values.weightKg, values.bpSystolic, values.bpDiastolic,
+       values.gestationalWeeks, values.lilaCm, values.labHb]);
+
   // Findings first. These depend only on the measurements, never on the plan,
   // which is what keeps the chain below acyclic.
   const { flags, referral, bmi } = useMemo(() => {
@@ -250,6 +259,24 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
           above the form and appears the instant the reading is entered. */}
       {/* Solid, not a bordered box among bordered boxes. At arm's length in
           daylight a border is a rectangle; a filled block is an alarm. */}
+      {/* ── WARNINGS SIT WITH THE EMERGENCIES, AT THE TOP ──────────────────
+          These were drawn below the birth-plan section, several screens down.
+          A midwife typing LILA near the top of the form never saw the KEK
+          warning without scrolling to look for it, and the bottom bar badges
+          emergencies only. A warning nobody scrolls to is not a warning. */}
+      {warnings.length > 0 && (
+        <div style={{
+          border: `1px solid ${C.amber}`, borderRadius: 11, padding: '12px 14px',
+          background: C.amberSoft, marginBottom: 14,
+        }}>
+          {warnings.map((f, i) => (
+            <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: C.white, marginBottom: i < warnings.length - 1 ? 7 : 0 }}>
+              {flagMessage(f, lang)}
+            </div>
+          ))}
+        </div>
+      )}
+
       {emergencies.length > 0 && (
         <div role="alert" style={{
           borderRadius: 11, padding: '14px 16px', marginBottom: 14,
@@ -407,19 +434,6 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         </Section>
       )}
 
-      {warnings.length > 0 && (
-        <div style={{
-          border: `1px solid ${C.amber}`, borderRadius: 11, padding: '12px 14px',
-          background: C.amberSoft, marginBottom: 14,
-        }}>
-          {warnings.map((f, i) => (
-            <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: C.white, marginBottom: i < warnings.length - 1 ? 7 : 0 }}>
-              {flagMessage(f, lang)}
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Sticky, because the score is feedback while she works — not a verdict
           delivered after she submits. */}
       <div style={{
@@ -465,6 +479,26 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
               // fills in. Here it is still part of finishing the visit.
               if (quality.expectedButSkipped.length > 0 && !askingWhy) setAskingWhy(true);
               else onSave({ values: { ...values, ...composed }, plan, skipReasons });
+          {/* ── NUMBERS THAT CANNOT BE TRUE ─────────────────────────────────
+              Named, never blocking — rule 4.4. The one marked willBeRefused is
+              different in kind: the server has a CHECK constraint on it, so
+              saving anyway means the visit is accepted here and silently
+              refused there. She is told that plainly, and QueueBanner tells her
+              again afterwards if it happens. */}
+          {implausible.length > 0 && (
+            <div style={{ marginBottom: 12, display: 'grid', gap: 6 }}>
+              {implausible.map((w, i) => (
+                <div key={i} style={{
+                  fontSize: 13, lineHeight: 1.5, borderRadius: 9, padding: '9px 11px',
+                  background: w.willBeRefused ? '#FDEAE8' : '#FBF1DC',
+                  border: `1px solid ${w.willBeRefused ? '#B3261E' : '#8A5D06'}`,
+                  color: w.willBeRefused ? '#B3261E' : '#8A5D06',
+                  fontWeight: w.willBeRefused ? 600 : 400,
+                }}>{t(w.id, w.en)}</div>
+              ))}
+            </div>
+          )}
+
             }}
             disabled={saving}
             style={{

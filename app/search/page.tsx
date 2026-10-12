@@ -9,6 +9,7 @@ import { searchRegister, describeRecord, describeLastSeen, dueState, knDueState,
          newbornDayOfLife, type SearchFilters } from '@/lib/search';
 import PasscodePrompt from '@/components/PasscodePrompt';
 import AppHeader from '@/components/AppHeader';
+import QueueBanner from '@/components/QueueBanner';
 import { refreshTargets } from '@/lib/referralTargets';
 import { useLang } from '@/lib/lang';
 import { C } from '@/components/ui';
@@ -76,6 +77,10 @@ export default function SearchPage() {
              `${outcome.total || register.length} stored on this device`)}
         </div>
       </div>
+
+      {/* What has not reached the record yet, and what never will without
+          somebody doing something. See components/QueueBanner.tsx. */}
+      <QueueBanner />
 
       <input
         value={query}

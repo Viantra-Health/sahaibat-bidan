@@ -13,7 +13,21 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
   register: true,
   skipWaiting: true,
-  reloadOnOnline: true,
+  /* ── NEVER RELOAD WHEN THE SIGNAL COMES BACK ─────────────────────────────
+     This was true, and it is the single most expensive line in this file. In
+     the field signal comes and goes constantly; every time it returned,
+     next-pwa reloaded the page and whatever she was typing was gone. Testing
+     caught it three times: a half-filled visit replaced by an empty form, with
+     nothing queued.
+
+     It also explains the duplicate upload seen in the same runs. The reload
+     restarted the app mid-sync, so a POST already in flight lost its response
+     and the fresh instance re-sent the same visit.
+
+     Nothing is lost by turning it off. SyncDaemon already listens for `online`
+     and uploads without touching the page, which is the behaviour this option
+     was presumably meant to provide. */
+  reloadOnOnline: false,
   disable: process.env.NODE_ENV === "development",
   fallbackRoutes: { document: "/offline" },
   workboxOptions: {

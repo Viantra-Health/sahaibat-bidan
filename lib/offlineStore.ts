@@ -48,7 +48,13 @@ export interface QueuedVisit {
   referNow?: boolean;
 
   createdAt: string;
-  syncStatus: 'pending' | 'synced' | 'failed';
+  /* 'rejected' is NOT 'failed'. failed means the upload did not happen —
+     no signal, a 500, a dropped connection — and trying again is the right
+     answer. rejected means the server received this visit, looked at it, and
+     refused it: a database constraint, a validation error. Retrying that for
+     ever changes nothing, and counting it as "waiting for signal" is how a
+     visit sat on a device unseen. */
+  syncStatus: 'pending' | 'synced' | 'failed' | 'rejected';
   syncError?: string;
 }
 
@@ -173,9 +179,26 @@ export async function getAllVisits(): Promise<QueuedVisit[]> {
   return tx<QueuedVisit[]>(VISITS, 'readonly', (s) => s.getAll());
 }
 
+/** What is worth trying again. Deliberately excludes `rejected`: the server
+ *  has already answered about those and the answer will not change. */
 export async function getPendingVisits(): Promise<QueuedVisit[]> {
   const all = await getAllVisits();
   return all.filter((v) => v.syncStatus === 'pending' || v.syncStatus === 'failed');
+}
+
+/** Visits the server refused. These need a person, not another attempt. */
+export async function getRejectedVisits(): Promise<QueuedVisit[]> {
+  const all = await getAllVisits();
+  return all.filter((v) => v.syncStatus === 'rejected');
+}
+
+/** Counts for the banner on the register: what is waiting, and what is stuck. */
+export async function queueCounts(): Promise<{ waiting: number; rejected: number }> {
+  const all = await getAllVisits();
+  return {
+    waiting: all.filter((v) => v.syncStatus === 'pending' || v.syncStatus === 'failed').length,
+    rejected: all.filter((v) => v.syncStatus === 'rejected').length,
+  };
 }
 
 export async function markVisitSynced(localId: string): Promise<void> {
@@ -188,6 +211,13 @@ export async function markVisitFailed(localId: string, error: string): Promise<v
   const v = await tx<QueuedVisit | undefined>(VISITS, 'readonly', (s) => s.get(localId));
   if (!v) return;
   await saveVisit({ ...v, syncStatus: 'failed', syncError: error });
+}
+
+/** The server looked at this visit and refused it. Stop retrying; tell her. */
+export async function markVisitRejected(localId: string, error: string): Promise<void> {
+  const v = await tx<QueuedVisit | undefined>(VISITS, 'readonly', (s) => s.get(localId));
+  if (!v) return;
+  await saveVisit({ ...v, syncStatus: 'rejected', syncError: error });
 }
 
 /** Synced visits older than `days`. The queue is not an archive — but nothing

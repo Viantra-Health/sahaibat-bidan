@@ -129,8 +129,24 @@ interface Props {
 
 export default function KnForm({ babyName, subtitle, values, onChange, onSave, saving }: Props) {
   const { t, lang } = useLang();
-  const set = <K extends keyof KnFormValues>(k: K) => (val: KnFormValues[K]) =>
-    onChange({ ...values, [k]: val });
+  const set = <K extends keyof KnFormValues>(k: K) => (val: KnFormValues[K]) => {
+    const next = { ...values, [k]: val };
+
+    /* ── A HIDDEN ANSWER IS STILL AN ANSWER ────────────────────────────────
+       The palms-and-soles question only shows while jaundice is Yes, but
+       changing jaundice back to No merely HID it and kept its value. Testing
+       saved a visit with jaundice = false and palmsSoles = true, which fired
+       the kernicterus emergency and generated an emergency referral for a baby
+       recorded as not jaundiced — a record that contradicts itself, from one
+       corrected mis-tap.
+
+       Clearing it back to null rather than to false, because she never
+       answered it: not asked is its own state here, exactly as it is for every
+       other question on this form. */
+    if (k === 'jaundice' && val !== true) next.jaundicePalmsSoles = null;
+
+    onChange(next);
+  };
 
   const day = num(values.dayOfLife);
   const suggestedKn = day != null ? knForDay(day) : null;

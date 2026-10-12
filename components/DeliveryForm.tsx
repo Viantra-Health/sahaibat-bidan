@@ -23,6 +23,7 @@ import { useMemo } from 'react';
 import { generateDeliveryFlags, shouldReferDelivery, linakes } from '@sahaibat/anc-engine';
 import { C, Section, Row, Hint, Field, Select, Tri } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
+import { todayLocal } from '@/lib/plausibility';
 
 export interface BabyValues {
   outcome: '' | 'hidup' | 'mati';
@@ -57,7 +58,11 @@ export const EMPTY_BABY: BabyValues = {
 };
 
 export const EMPTY_DELIVERY: DeliveryFormValues = {
-  deliveryDate: new Date().toISOString().slice(0, 10),
+  // The DEVICE's calendar, not UTC. On a phone in Indonesia between midnight
+  // and 07:00 WIB the UTC date is still yesterday, so a birth at 01:00 was
+  // dated the day before -- and day of life decides KN1 timing and the
+  // day-one jaundice rule.
+  deliveryDate: todayLocal(),
   deliveryTime: '',
   place: '', placeName: '', attendant: '', attendantName: '',
   mode: '', gestationalWeeks: '', bloodLossMl: '', complications: '',

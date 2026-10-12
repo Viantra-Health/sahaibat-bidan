@@ -21,6 +21,7 @@ import { generateKnFlags, shouldReferKn, knForDay } from '@sahaibat/anc-engine';
 import { useLang } from '@/lib/lang';
 import AppHeader from '@/components/AppHeader';
 import { C } from '@/components/ui';
+import { todayLocal } from '@/lib/plausibility';
 
 export default function KnVisitPage() {
   const router = useRouter();
@@ -45,7 +46,8 @@ export default function KnVisitPage() {
       // Prefill the day and the visit type from her date of birth. She can
       // change both: the record may have the wrong birth date, and the visit
       // being recorded may have happened days ago.
-      const today = new Date().toISOString().split('T')[0];
+      // The device's calendar, not UTC -- age in days decides the jaundice rule.
+      const today = todayLocal();
       if (r.dob) {
         const days = Math.floor((Date.now() - new Date(r.dob).getTime()) / 86_400_000);
         if (Number.isFinite(days) && days >= 0) {
