@@ -10,6 +10,7 @@ import { searchRegister, describeRecord, describeLastSeen, dueState, knDueState,
 import PasscodePrompt from '@/components/PasscodePrompt';
 import AppHeader from '@/components/AppHeader';
 import QueueBanner from '@/components/QueueBanner';
+import { getRejectedVisits } from '@/lib/offlineStore';
 import { refreshTargets } from '@/lib/referralTargets';
 import { useLang } from '@/lib/lang';
 import { C } from '@/components/ui';
@@ -63,6 +64,30 @@ export default function SearchPage() {
   );
 
   if (!identity) return null;
+
+  /* ── WHICH MOTHERS HAVE A VISIT THAT NEVER LANDED ────────────────────────
+     Identity is resolved before the visit is written, so a mother whose only
+     visit the server then refused still exists in the register — correctly, so
+     that re-recording it attaches to HER rather than making a second record.
+     What was missing is any sign on her row that the visit is gone. The banner
+     at the top names her; this marks the row she is on, which is where a
+     midwife actually looks for her. */
+  const [rejectedFor, setRejectedFor] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let live = true;
+    const read = () => getRejectedVisits().then((rows) => {
+      if (!live) return;
+      const keys = new Set<string>();
+      for (const r of rows as any[]) {
+        if (r?.memberId) keys.add(String(r.memberId));
+        if (r?.motherName) keys.add(String(r.motherName).trim().toLowerCase());
+      }
+      setRejectedFor(keys);
+    }).catch(() => {});
+    read();
+    const timer = setInterval(read, 15000);
+    return () => { live = false; clearInterval(timer); };
+  }, []);
 
   return (
     <main style={{ padding: 20, maxWidth: 460, margin: '0 auto', minHeight: '100dvh' }}>
@@ -205,6 +230,19 @@ export default function SearchPage() {
                          : due.urgency === 'due' ? C.amber : C.ok,
                   }}>
                     {due.label}
+                  </span>
+                )}
+                {/* Her visit was refused and is not in the record. Shown on the
+                    row because that is where a midwife looks for her, not only
+                    in the banner at the top of the page. */}
+                {(rejectedFor.has(record.memberId)
+                  || rejectedFor.has(String(record.name ?? '').trim().toLowerCase())) && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, color: '#B3261E', background: '#FDEAE8',
+                    border: '1px solid #B3261E', borderRadius: 5, padding: '2px 7px',
+                    alignSelf: 'flex-start',
+                  }}>
+                    {t('Kunjungan ditolak — belum masuk catatan', 'Visit refused — not in the record')}
                   </span>
                 )}
                 {describeLastSeen(record, t, lang === 'en' ? 'en-GB' : 'id-ID') && (

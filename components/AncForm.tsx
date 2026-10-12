@@ -445,10 +445,26 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
           <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 10 }}>
             <span style={{
               fontSize: 22, fontWeight: 800, lineHeight: 1,
+              // Still the 0-10 ratio, because a threshold has to be
+              // comparable across visits with different denominators.
               color: quality.score >= 8 ? C.teal : quality.score >= 5 ? C.amber : C.dim,
               fontVariantNumeric: 'tabular-nums', flex: '0 0 auto',
             }}>
-              {quality.score}<span style={{ fontSize: 13, fontWeight: 600, opacity: .6 }}>/10</span>
+              {/* ── THE REAL DENOMINATOR, NOT A SCALE OF TEN ──────────────────
+                  score is a RATIO rescaled to 10, and printing it beside a
+                  COUNT of missing items made the two contradict each other:
+                  "3/10" next to "6 missing" invites 10 − 6 = 4 and none of the
+                  numbers agree. Two completed items out of eight expected is
+                  2/8, and 2 + 6 = 8.
+
+                  The denominator also moves, which is the point: before 12
+                  weeks fundal height is not expected and before 36 weeks nor
+                  is presentation, so a full visit early in pregnancy is out of
+                  eight and is not a worse visit for it. */}
+              {quality.completed.length}
+              <span style={{ fontSize: 13, fontWeight: 600, opacity: .6 }}>
+                /{quality.completed.length + quality.expectedButSkipped.length}
+              </span>
             </span>
             {/* Named, not coded, and capped at two so the line never wraps and
                 push the save button off a small screen. */}

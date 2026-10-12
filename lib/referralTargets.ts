@@ -73,7 +73,11 @@ export function explainEmpty(notes: string[], t: (id: string, en: string) => str
     return t('Posyandu Anda belum terhubung ke desa, jadi rujukan otomatis belum tersedia.',
              'Your Posyandu is not linked to a village yet, so automatic referral targets are unavailable.');
   }
-  if (notes.includes('puskesmas_master_unavailable') || notes.includes('no_puskesmas_in_kabupaten')) {
+  // startsWith, not equality: the server now appends the reason to these notes
+  // so a failure can be diagnosed from a screenshot, and an exact match would
+  // have stopped recognising them the moment it did.
+  const has = (prefix: string) => notes.some((n) => String(n).startsWith(prefix));
+  if (has('puskesmas_master_unavailable') || has('no_puskesmas_in_kabupaten')) {
     return t('Daftar Puskesmas untuk wilayah Anda belum tersedia.',
              'The Puskesmas list for your district is not available yet.');
   }

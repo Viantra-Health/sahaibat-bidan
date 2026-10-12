@@ -43,7 +43,7 @@ export default function AncVisitPage() {
   const [values, setValues] = useState<AncFormValues>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const { t } = useLang();
-  const [saved, setSaved] = useState<{ score: number; refer: boolean; urgency: string } | null>(null);
+  const [saved, setSaved] = useState<{ score: number; done: number; of: number; refer: boolean; urgency: string } | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
@@ -92,7 +92,12 @@ export default function AncVisitPage() {
       });
       const { clinical } = toEngineInputs(v, record.ageYears);
       const urgency = shouldRefer(generateClinicalFlags(clinical as any)).urgency;
-      setSaved({ score: visit.qualityScore ?? 0, refer: !!visit.referNow, urgency });
+      setSaved({
+        score: visit.qualityScore ?? 0,
+        done: (visit.data as any)?.itemsCompleted ?? 0,
+        of: (visit.data as any)?.itemsExpected ?? 10,
+        refer: !!visit.referNow, urgency,
+      });
       // Best-effort. The visit is already durable in IndexedDB, so a failure
       // here changes nothing except when it reaches the dashboard.
       syncPendingVisits().catch(() => {});
@@ -185,7 +190,8 @@ export default function AncVisitPage() {
         <div style={{ fontSize: 34, marginBottom: 10 }}>✅</div>
         <h1 style={{ fontSize: 21, margin: '0 0 6px' }}>{t('Kunjungan tersimpan', 'Visit saved')}</h1>
         <p style={{ color: C.dim, margin: '0 0 4px', lineHeight: 1.6 }}>
-          {record.name} · {values.visitType} · skor 10T {saved.score}/10
+          {/* The same denominator the form showed her, not a rescale. */}
+          {record.name} · {values.visitType} · 10T {saved.done}/{saved.of}
         </p>
         <p style={{ color: C.dimmer, fontSize: 13, lineHeight: 1.6 }}>
           {t('Tersimpan di perangkat. Akan terkirim otomatis saat ada sinyal.',

@@ -84,6 +84,11 @@ export async function saveAncVisit(args: {
       // the pair can be read without re-running the engine — and so a later
       // rule change cannot retroactively alter what she was asked about.
       expectedButSkipped: quality.expectedButSkipped,
+      // The denominator the form showed her. qualityScore is a ratio rescaled
+      // to ten and cannot be read back as "N of M", which is how "3/10" ended
+      // up printed next to "6 missing".
+      itemsCompleted: quality.completed.length,
+      itemsExpected: quality.completed.length + quality.expectedButSkipped.length,
       plan: plan && (plan.accepted.length > 0 || plan.declined.length > 0) ? plan : null,
     },
     qualityScore: quality.score,
