@@ -91,10 +91,12 @@ export function formatStoredDate(value: unknown, locale = 'id-ID'): string {
 export function checkAnc(v: {
   weightKg?: unknown; bpSystolic?: unknown; bpDiastolic?: unknown;
   gestationalWeeks?: unknown; lilaCm?: unknown; labHb?: unknown; visitDate?: unknown;
+  temperatureC?: unknown;
 }): Implausible[] {
   const out: Implausible[] = [];
   const w = n(v.weightKg), sys = n(v.bpSystolic), dia = n(v.bpDiastolic);
   const ga = n(v.gestationalWeeks), lila = n(v.lilaCm), hb = n(v.labHb);
+  const temp = n(v.temperatureC);
 
   if (w !== null && (w < 25 || w > 200)) out.push({ field: 'weightKg',
     id: `Berat ${w} kg tidak masuk akal. Periksa lagi.`,
@@ -117,6 +119,13 @@ export function checkAnc(v: {
 
   if (hb !== null && (hb < 2 || hb > 25)) out.push({ field: 'labHb',
     id: `Hb ${hb} tidak masuk akal.`, en: `An Hb of ${hb} cannot be right.` });
+
+  /* A decimal point missed on a thermometer reads as 386, and the fever rules
+     would call that a referral. 30-45 covers every survivable reading in both
+     directions, including the hypothermia band the engine refers on. */
+  if (temp !== null && (temp < 30 || temp > 45)) out.push({ field: 'temperatureC',
+    id: `Suhu ${temp}°C tidak masuk akal. Periksa lagi.`,
+    en: `A temperature of ${temp}°C cannot be right. Check it.` });
 
   /* ── AN UNKNOWN GESTATIONAL AGE IS A RECORD, NOT AN ERROR ─────────────────
      This used to say the server would refuse the visit, and it was true: the

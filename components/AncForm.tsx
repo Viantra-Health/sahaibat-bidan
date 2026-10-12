@@ -20,7 +20,7 @@ import { score10T, generateClinicalFlags, shouldRefer, calculateBMI } from '@sah
 import SkipReasons, { type SkipReasonMap } from './SkipReasons';
 import PlanPanel, { EMPTY_PLAN, lineText, type PlanState } from './PlanPanel';
 import { suggestCarePlan, planToFields, type PlanItem } from '@sahaibat/anc-engine';
-import { C, ghostBtn, Section, Row, Hint, Field, Select } from './ui';
+import { C, ghostBtn, Section, Row, Hint, Field, Select, Tri } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
 import { checkAnc } from '@/lib/plausibility';
 import ConfirmWarnings from '@/components/ConfirmWarnings';
@@ -35,6 +35,11 @@ export interface AncFormValues {
   labHb: string; labProtein: string;
   hivStatus: string; syphilisStatus: string; hbsagStatus: string;
   bloodSugarMg: string; malariaRdt: string;
+  /* A vital sign, NOT one of the ten -- it must never move the 10T
+     denominator. The engine has a test pinning exactly that. */
+  temperatureC: string;
+  /** Tri-state. null means she was not asked, which is not the same as no. */
+  feverLast48h: boolean | null;
   counselling: string; presentation: string;
   caseManagement: string; followupPlan: string; complaints: string;
   // P4K — Perencanaan Persalinan dan Pencegahan Komplikasi. The engine has
@@ -50,6 +55,7 @@ export const EMPTY_FORM: AncFormValues = {
   bloodType: '', ttStatus: '', feTablets: '',
   labHb: '', labProtein: '', hivStatus: '', syphilisStatus: '', hbsagStatus: '',
   bloodSugarMg: '', malariaRdt: '',
+  temperatureC: '', feverLast48h: null,
   counselling: '', presentation: '',
   caseManagement: '', followupPlan: '', complaints: '',
   p4kFasilitas: '', p4kTransportasi: '', p4kDonorDarah: '',
@@ -108,6 +114,10 @@ export function toEngineInputs(v: AncFormValues, motherAge: number | null) {
     hbsagStatus: v.hbsagStatus || null,
     bloodSugarMg: num(v.bloodSugarMg),
     malariaRdt: v.malariaRdt || null,
+    // Blank stays blank. A missing temperature is not 36.5, and a midwife with
+    // no thermometer must not be read as having found no fever.
+    temperatureC: num(v.temperatureC),
+    feverLast48h: v.feverLast48h,
     usgResults: null,
     // Null when she has filled nothing — the rules distinguish "no plan yet"
     // from "a plan missing its transport", and collapsing that into an object
@@ -192,7 +202,11 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
   const [askingValues, setAskingValues] = useState(false);
   const [plan, setPlan] = useState<PlanState>(EMPTY_PLAN);
   const [skipReasons, setSkipReasons] = useState<SkipReasonMap>({});
-  const set = (k: keyof AncFormValues) => (val: string) => onChange({ ...values, [k]: val });
+  /* Generic, like PncForm's. It was string-only, so a tri-state field could
+     not be wired to it at all -- the setter it handed back only accepted a
+     string and `null` was not assignable. */
+  const set = <K extends keyof AncFormValues>(k: K) => (val: AncFormValues[K]) =>
+    onChange({ ...values, [k]: val });
 
   const gw = num(values.gestationalWeeks) ?? 0;
 
@@ -200,9 +214,9 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
   const implausible = useMemo(() => checkAnc({
     weightKg: values.weightKg, bpSystolic: values.bpSystolic,
     bpDiastolic: values.bpDiastolic, gestationalWeeks: values.gestationalWeeks,
-    lilaCm: values.lilaCm, labHb: values.labHb,
+    lilaCm: values.lilaCm, labHb: values.labHb, temperatureC: values.temperatureC,
   }), [values.weightKg, values.bpSystolic, values.bpDiastolic,
-       values.gestationalWeeks, values.lilaCm, values.labHb]);
+       values.gestationalWeeks, values.lilaCm, values.labHb, values.temperatureC]);
 
   // Findings first. These depend only on the measurements, never on the plan,
   // which is what keeps the chain below acyclic.
@@ -248,6 +262,10 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
     () => score10T(toEngineInputs({ ...values, ...composed }, motherAge).visit as any),
     [values, composed, motherAge],
   );
+
+  /* Read off the engine's own answer rather than re-deciding here. A second
+     copy of "is she febrile" would drift from the one that raises the flag. */
+  const needsMalariaTest = flags.some((f) => f.type === 'MALARIA_TEST_REQUIRED');
 
   const emergencies = flags.filter(f => f.severity === 'EMERGENCY');
   const warnings = flags.filter(f => f.severity === 'WARNING');
@@ -318,6 +336,17 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
           <Field label={t('TD sistolik', 'BP systolic')} unit="mmHg" value={values.bpSystolic} onChange={set('bpSystolic')} numeric />
           <Field label={t('TD diastolik', 'BP diastolic')} unit="mmHg" value={values.bpDiastolic} onChange={set('bpDiastolic')} numeric />
         </Row>
+        {/* ── FEVER ────────────────────────────────────────────────────────
+            A vital sign, so it sits with the vitals rather than in the lab
+            block. The question beside it is not a convenience: it is the
+            Kemenkes malaria rule verbatim -- "fever, or a history of fever in
+            the last 48 hours" -- it catches the woman who was febrile at three
+            in the morning, and unlike the thermometer it works on a device
+            where there is no thermometer at all. */}
+        <Field label={t('Suhu', 'Temperature')} unit="°C" value={values.temperatureC}
+          onChange={set('temperatureC')} numeric placeholder="36.8" />
+        <Tri label={t('Demam dalam 48 jam terakhir?', 'Fever in the last 48 hours?')}
+          value={values.feverLast48h} onChange={set('feverLast48h')} />
       </Section>
 
       <Section title={t('T3 · Tinggi Fundus, LILA, DJJ', 'T3 · Fundal Height, LILA, DJJ')}>
@@ -349,7 +378,13 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         {/* K1 screening is a long block that is only mandated once. Collapsed by
             default so a K3 visit is not a wall of empty fields — but opened
             automatically at K1, where leaving it blank is a real gap. */}
-        {(values.visitType === 'K1' || showLabs) ? (
+        {/* ── THE TEST SHE IS BEING TOLD TO DO MUST BE RECORDABLE ────────
+            This block is collapsed on anything but K1, and the malaria RDT
+            lives inside it. So the engine could raise MALARIA_TEST_REQUIRED at
+            K3 and she would have nowhere to enter the result -- an instruction
+            with no field behind it, which is how a prompt becomes something
+            she learns to ignore. A fever opens the block. */}
+        {(values.visitType === 'K1' || showLabs || needsMalariaTest) ? (
           <>
             <Row>
               <Select label="HIV" value={values.hivStatus} onChange={set('hivStatus')}
