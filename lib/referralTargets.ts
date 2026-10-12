@@ -8,12 +8,17 @@
 
 export interface ReferralTarget {
   rung: 1 | 2 | 3;
-  kind: 'puskesmas' | 'provider' | 'dok';
+  kind: 'puskesmas' | 'hospital' | 'provider' | 'dok';
   ref: string;
   name: string;
   subtitle: string | null;
   confirmed: boolean;
   acceptsBpjs?: boolean;
+  /** A number she can ring before she sets off. */
+  phone?: string | null;
+  /** What is actually known about the place -- "Kelas C · 2 Sp.OG terdaftar".
+   *  A fact about a register, never a claim that it is PONEK tonight. */
+  detail?: string | null;
 }
 
 interface Cached {
@@ -77,6 +82,17 @@ export function explainEmpty(notes: string[], t: (id: string, en: string) => str
   // so a failure can be diagnosed from a screenshot, and an exact match would
   // have stopped recognising them the moment it did.
   const has = (prefix: string) => notes.some((n) => String(n).startsWith(prefix));
+  /* Her kabupaten genuinely has no hospital -- three of the 514 do not, and
+     two are in pilot provinces. The list is then widened to the province, so
+     this is an explanation of what she is looking at, not an error. */
+  if (notes.includes('no_hospital_in_kabupaten')) {
+    return t('Tidak ada rumah sakit di kabupaten Anda. Yang terdekat ada di kabupaten lain — lihat daftar di atas.',
+             'There is no hospital in your kabupaten. The nearest are in other kabupaten — see the list above.');
+  }
+  if (has('rs_master_unavailable')) {
+    return t('Daftar rumah sakit belum bisa dimuat. Surat rujukan tetap bisa dibuat.',
+             'The hospital list could not be loaded. The referral letter still works.');
+  }
   if (has('puskesmas_master_unavailable') || has('no_puskesmas_in_kabupaten')) {
     return t('Daftar Puskesmas untuk wilayah Anda belum tersedia.',
              'The Puskesmas list for your district is not available yet.');
