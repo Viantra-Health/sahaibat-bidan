@@ -59,7 +59,10 @@ export interface QueuedVisit {
 }
 
 export interface VisitSummary {
-  kind: 'anc' | 'pnc';
+  /* 'kn' and 'delivery' were added after the register was found to carry
+     neither: a baby with two recorded KN1 visits still showed KN1 as due,
+     because nothing about her visits ever reached the device. */
+  kind: 'anc' | 'pnc' | 'kn' | 'delivery';
   date: string;
   visitType: string | null;
   context: string | null;      // "28 mgg" | "hari ke-7"

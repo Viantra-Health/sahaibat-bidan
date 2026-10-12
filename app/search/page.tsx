@@ -148,11 +148,22 @@ export default function SearchPage() {
                        : due?.urgency === 'due' ? C.amber
                        : C.border;
 
-            // The second action is contextual rather than a third button. A
-            // row is not wide enough for three targets a thumb can hit, and
-            // the choice is not arbitrary: a woman at 28 weeks or more is far
-            // likelier to be delivering than to need a postnatal visit, and a
-            // woman who has not delivered cannot have one at all.
+            /* The second action is contextual rather than a third button: a row
+               is not wide enough for three targets a thumb can hit.
+
+               IT USED TO FALL THROUGH TO NIFAS FOR A PREGNANT WOMAN, which
+               contradicts the sentence that justified it — a woman who has not
+               delivered cannot have a postnatal visit at all. The gate was
+               `pregnant AND an EDD AND 12 weeks or fewer to go`, so a mother at
+               16 weeks, and every mother with no EDD recorded, was offered a
+               postnatal visit and had NO route to the delivery form. Preterm
+               birth is precisely the case that most needs recording, and
+               testing found Ratna Dewi Uji — two visits at 28 weeks, no EDD —
+               with no way in.
+
+               Pregnancy decides it now, not proximity to term. The EDD still
+               decides the EMPHASIS: near term it leads, earlier it is quieter,
+               so a mis-tap at 16 weeks is still unlikely. */
             const weeksLeft = record.edd
               ? (new Date(record.edd).getTime() - Date.now()) / (7 * 86_400_000)
               : null;
@@ -163,7 +174,7 @@ export default function SearchPage() {
             const primaryHref = isNewborn ? `/kn/${record.memberId}` : `/anc/${record.memberId}`;
             const second = isNewborn
               ? { href: `/kn/${record.memberId}`,         label: t('Neonatal', 'Newborn') }
-              : nearTerm
+              : record.isPregnant
               ? { href: `/persalinan/${record.memberId}`, label: t('Lahir', 'Birth') }
               : { href: `/pnc/${record.memberId}`,        label: t('Nifas', 'Postnatal') };
             return (
@@ -210,8 +221,14 @@ export default function SearchPage() {
                 onClick={() => router.push(second.href)}
                 aria-label={`${second.label} — ${record.name}`}
                 style={{
-                  width: 82, background: C.card2, border: 'none',
-                  borderLeft: `1px solid ${C.border}`, color: C.dim,
+                  width: 82, border: 'none',
+                  /* Near term the delivery route leads; earlier it is present
+                     but quiet, so reaching it at 16 weeks is deliberate rather
+                     than a mis-tap. The route exists either way — that is the
+                     part that was wrong. */
+                  background: nearTerm ? C.amberSoft : C.card2,
+                  borderLeft: `1px solid ${nearTerm ? C.amber : C.border}`,
+                  color: nearTerm ? C.white : C.dim,
                   fontSize: 11.5, fontWeight: 700, cursor: 'pointer', letterSpacing: '.04em',
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
                   justifyContent: 'center', gap: 3, padding: '10px 6px',

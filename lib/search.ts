@@ -13,6 +13,7 @@
 
 import { nameSimilarity, normaliseName } from '@sahaibat/identity';
 import type { RegisterRecord } from './offlineStore';
+import { daysBetween } from './plausibility';
 
 export interface SearchFilters {
   /** Her own village. Not a hard filter — a boost, so a neighbouring-village
@@ -193,7 +194,10 @@ export function describeRecord(r: RegisterRecord, t: T = ID): string {
  */
 export interface DueState {
   label: string;                 // "K4 terlambat 5 hari"
-  urgency: 'overdue' | 'due' | 'soon';
+  /* 'done' is not an alarm and deliberately not 'soon': the row should say
+     the schedule is finished rather than go blank, which reads as missing
+     data. The rail falls through to its default colour for it. */
+  urgency: 'overdue' | 'due' | 'soon' | 'done';
 }
 
 /** Kemenkes six-contact schedule, as the midpoint week each contact targets. */
@@ -262,26 +266,51 @@ export function describeLastSeen(r: RegisterRecord, t: T = ID, locale = 'id-ID')
 export function newbornDayOfLife(r: RegisterRecord): number | null {
   if (!r.dob) return null;
   if ((r.role ?? '') !== 'anak') return null;
-  const days = Math.floor((Date.now() - new Date(r.dob).getTime()) / 86_400_000);
-  if (!Number.isFinite(days) || days < 0 || days > 60) return null;
+  // Calendar days in the device's own calendar. Subtracting two INSTANTS, with
+  // a date string parsing at UTC midnight, made a baby born on the 10th read
+  // as 2 days old late on the 11th -- and day of life decides which KN visit
+  // is due and which jaundice rule applies. Same fault, second place.
+  const days = daysBetween(r.dob);
+  if (days == null || days < 0 || days > 60) return null;
   return days;
 }
 
 /**
  * Which newborn visit is due, if any.
  *
- * Unlike dueState this cannot yet check what has already been done — the
- * register carries antenatal and postnatal history, not KN — so it reports
- * the window rather than the gap. That overstates what is outstanding for a
- * baby already seen today, which is the safe direction to be wrong in.
+ * It now checks what has already been done. The register carries newborn
+ * visits as of the same change, so this reports the GAP rather than the
+ * window: a baby seen today is no longer asked for the visit she just had.
  */
 export function knDueState(r: RegisterRecord, t: T = ID): DueState | null {
   const days = newbornDayOfLife(r);
   if (days == null) return null;
 
-  if (days <= 2)  return { label: t('KN1 jatuh tempo', 'KN1 due now'), urgency: 'due' };
-  if (days <= 7)  return { label: t('KN2 jatuh tempo', 'KN2 due now'), urgency: 'due' };
-  if (days <= 28) return { label: t('KN3 jatuh tempo', 'KN3 due now'), urgency: 'due' };
+  /* ── WHAT HAS ALREADY BEEN DONE ───────────────────────────────────────────
+     This read the baby's AGE and nothing else, so it asked for KN1 for the
+     first two days of life however many KN1 visits had been recorded. Testing
+     found a baby with two uploaded KN1 visits, one of them an emergency
+     referral, whose row still said KN1 JATUH TEMPO.
+
+     Half of that was the register never carrying newborn visits at all; this
+     is the other half. A visit that has been done is not due. */
+  const done = new Set(
+    (r.history ?? [])
+      .filter((h) => h.kind === 'kn' && h.visitType)
+      .map((h) => String(h.visitType).toUpperCase()),
+  );
+  const nextDue = (['KN1', 'KN2', 'KN3'] as const).find((k) => !done.has(k));
+
+  if (!nextDue) {
+    return { label: t('KN1–KN3 selesai', 'KN1–KN3 complete'), urgency: 'done' };
+  }
+
+  /* The window is still the baby's age; what changed is that a window whose
+     visit is already recorded no longer asks for it. A KN2 recorded early
+     still leaves KN1 outstanding and this will say so. */
+  if (days <= 2)  return { label: t(`${nextDue} jatuh tempo`, `${nextDue} due now`), urgency: 'due' };
+  if (days <= 7)  return { label: t(`${nextDue} jatuh tempo`, `${nextDue} due now`), urgency: 'due' };
+  if (days <= 28) return { label: t(`${nextDue} jatuh tempo`, `${nextDue} due now`), urgency: 'due' };
   return {
     label: t(`Neonatal lewat ${days - 28} hari`, `${days - 28} days past neonatal`),
     urgency: 'overdue',
