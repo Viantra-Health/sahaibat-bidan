@@ -76,20 +76,38 @@ export function suggestedContact(r: RegisterRecord): string | null {
      is the better signal when we have it, but the contacts she has ALREADY
      HAD are a signal on their own, and they are the one thing no estimate is
      needed for. */
+  /* ── NEVER BELOW WHAT IS ALREADY RECORDED ─────────────────────────────────
+     The first version answered "the earliest contact still outstanding", which
+     put Lina Marlina Uji -- 29 weeks, with K1 and K4 already recorded -- onto
+     K2, because K2 was the first gap. A contact she has already had cannot be
+     the one happening now, and a visit labelled K2 after K4 is recorded puts
+     the record out of order.
+
+     A missed contact is real and is worth showing her, but it belongs in the
+     what-is-outstanding panel, which already lists "K2 terlewat". It is not a
+     label for today's visit. So the floor is the highest contact on record. */
+  const idx = (k: string) => K_SCHEDULE.findIndex((b) => b.k === k);
+  const highestDone = done.reduce((hi, k) => Math.max(hi, idx(k)), -1);
+  const atLeast = (k: string | null): string | null => {
+    if (!k) return k;
+    return idx(k) > highestDone ? k : (K_SCHEDULE[highestDone + 1]?.k ?? K_SCHEDULE[highestDone].k);
+  };
+
   if (gw == null) {
     if (done.length === 0) return null;
-    const next = K_SCHEDULE.find((b) => !done.includes(b.k));
-    return next ? next.k : K_SCHEDULE[K_SCHEDULE.length - 1].k;
+    return atLeast(K_SCHEDULE.find((b) => !done.includes(b.k))?.k ?? null)
+        ?? K_SCHEDULE[K_SCHEDULE.length - 1].k;
   }
 
   // The contact whose window she is in, if it has not been done.
   const band = K_SCHEDULE.find((b) => gw >= b.from && gw <= b.to);
-  if (band && !done.includes(band.k)) return band.k;
+  if (band && !done.includes(band.k)) return atLeast(band.k);
 
   // Otherwise the earliest one still outstanding -- a mother who booked late
-  // is having her K1 at 22 weeks, and calling it K3 would be a fiction.
+  // is having her K1 at 22 weeks, and calling it K3 would be a fiction -- but
+  // never earlier than one she has already had.
   const firstUndone = K_SCHEDULE.find((b) => !done.includes(b.k));
-  if (firstUndone) return firstUndone.k;
+  if (firstUndone) return atLeast(firstUndone.k);
 
   // Every contact is done and she is here anyway. That is a real visit; the
   // last contact is the honest label and she can change it.
