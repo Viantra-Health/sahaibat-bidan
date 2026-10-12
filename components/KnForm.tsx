@@ -91,7 +91,12 @@ export function toGrams(s: string): number | null {
 
 export function toKnInput(v: KnFormValues) {
   return {
-    dayOfLife: num(v.dayOfLife) ?? 0,
+    /* NULL, not 0. The engine accepts it as of a1322a0 — before that this
+       was typed `number` and a blank had nowhere to go but zero, which is a
+       real value that decides the day-one jaundice rule. Every day-dependent
+       rule is guarded on the other side now, and the engine raises
+       KN_AGE_UNKNOWN rather than letting the silence read as reassurance. */
+    dayOfLife: num(v.dayOfLife),
     weightGrams: toGrams(v.weightGrams),
     birthWeightGrams: toGrams(v.birthWeightGrams),
     temperatureC: num(v.temperatureC),
@@ -204,18 +209,19 @@ export default function KnForm({ babyName, subtitle, values, onChange, onSave, s
               screen and day 0 in the record, which is a blank turned into a
               finding.
 
-              Named here rather than blocked (rule 4.4), and the coercion
-              itself cannot be removed from this repo: dayOfLife is typed
-              `number` in @sahaibat/anc-engine, so accepting null is a change
-              to that package. Until then this is what stops it being silent. */}
+              Named here rather than blocked (rule 4.4). The coercion itself
+              is gone as of engine a1322a0: a blank now travels as null and
+              every day-dependent rule is guarded, so this prompt is about
+              getting the age RECORDED rather than about a value being
+              invented. */}
           {values.dayOfLife.trim() === '' && (
             <div style={{
               gridColumn: '1 / -1', fontSize: 12.5, lineHeight: 1.5, borderRadius: 9,
               padding: '9px 11px', background: '#FBF1DC', border: '1px solid #8A5D06',
               color: '#8A5D06',
             }}>
-              {t('Usia bayi belum diisi. Aturan ikterus menurut hari tidak bisa dijalankan, dan catatan akan menyimpan hari ke-0.',
-                 'The age is empty. The day-based jaundice rules cannot run, and the record will store day 0.')}
+              {t('Usia bayi belum diisi. Aturan ikterus, imunisasi dan berat menurut hari tidak akan dijalankan.',
+                 'The age is empty. The day-based jaundice, immunisation and weight rules will not run.')}
             </div>
           )}
         </Row>
