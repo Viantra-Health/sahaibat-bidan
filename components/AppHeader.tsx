@@ -173,8 +173,13 @@ export default function AppHeader({
                 borderRadius: 9, padding: '10px 12px',
                 background: '#FDEAE8', border: '1px solid #B3261E', color: '#B3261E',
               }}>
-                {t(`${queued.rejected} kunjungan DITOLAK server dan tidak akan pernah terkirim. Mencoba lagi tidak menolong. Kunjungan itu harus dicatat ulang — lihat daftarnya di halaman daftar warga, lalu hubungi koordinator Anda.`,
-                   `${queued.rejected} visit(s) were REFUSED by the server and will never be sent. Trying again will not help. They have to be recorded again — the register page names them — then contact your coordinator.`)}
+                {/* This said "Mencoba lagi tidak menolong" while the register
+                    page offered a Coba kirim lagi button two taps away. Both
+                    cannot be true. Retrying does nothing while the refusal
+                    stands and everything once the cause is fixed, so the two
+                    screens now say that same sentence. */}
+                {t(`${queued.rejected} kunjungan DITOLAK server dan belum masuk catatan. Kunjungan itu tidak akan terkirim sendiri: di halaman daftar warga ada tombol "Coba kirim lagi", dan kalau masih ditolak kunjungan itu harus dicatat ulang. Hubungi koordinator Anda.`,
+                   `${queued.rejected} visit(s) were REFUSED by the server and are not in the record. They will not go on their own: the register page has a "Try sending again" button, and if they are still refused they have to be recorded again. Contact your coordinator.`)}
               </p>
             )}
             {queued && queued.waiting === 0 && queued.rejected === 0 && (

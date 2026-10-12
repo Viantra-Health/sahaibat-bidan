@@ -10,7 +10,7 @@ import PncForm, { EMPTY_PNC, toPncInput, type PncFormValues } from '@/components
 import { buildReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
 import LetterSheet from '@/components/LetterSheet';
-import { generatePncFlags, shouldReferPnc } from '@sahaibat/anc-engine';
+import { generatePncFlags, shouldReferPnc, kfForDay } from '@sahaibat/anc-engine';
 import { useLang } from '@/lib/lang';
 import { daysBetween } from '@/lib/plausibility';
 import AppHeader from '@/components/AppHeader';
@@ -62,9 +62,34 @@ export default function PncVisitPage() {
         .then((fromQueue) => {
           const birthDate = fromQueue ?? fromRegister;
           const day = birthDate ? daysBetween(birthDate) : null;
-          if (day != null && day >= 0) {
-            setValues((v) => ({ ...v, daysPostpartum: String(day) }));
-          }
+
+          /* ── WHICH POSTNATAL CONTACT THIS IS ──────────────────────────────
+             The day alone is not enough. Ratna Dewi Uji already had KF1 on the
+             day she delivered, and the form opened as KF1 again, because day 0
+             says KF1 and nothing looked at what had already been done.
+
+             So: the later of what the DAY suggests and what the RECORD leaves
+             outstanding. A second visit on the day of delivery is KF2 only
+             because KF1 was done -- the day cannot tell you that, and the
+             record cannot tell you she is late. Still only a suggestion; the
+             field stays editable and a late contact is never questioned. */
+          const ORDER = ['KF1', 'KF2', 'KF3', 'KF4'];
+          const done = new Set(
+            (r.history ?? [])
+              .filter((h) => h.kind === 'pnc' && h.visitType)
+              .map((h) => String(h.visitType).toUpperCase()),
+          );
+          const byDay = day != null && day >= 0 ? kfForDay(day) : null;
+          const nextUndone = ORDER.find((k) => !done.has(k)) ?? null;
+          const pick = [byDay, nextUndone]
+            .filter((k): k is string => !!k && ORDER.includes(k))
+            .sort((a, b) => ORDER.indexOf(b) - ORDER.indexOf(a))[0] ?? null;
+
+          setValues((v) => ({
+            ...v,
+            ...(day != null && day >= 0 ? { daysPostpartum: String(day) } : {}),
+            ...(pick ? { visitType: pick as typeof v.visitType } : {}),
+          }));
         });
     });
   }, [memberId, router]);

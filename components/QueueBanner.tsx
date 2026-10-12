@@ -107,11 +107,22 @@ export default function QueueBanner() {
                   {r.why && <span style={{ opacity: .85 }}>{` — ${isEN ? r.why.en : r.why.id}`}</span>}
                 </li>
               ))}
+              {/* ── EIGHT REFUSED, FIVE NAMED, AND NOTHING SAYING SO ──────
+                  The list is capped at five so the banner cannot swallow the
+                  register, which is right -- but with no sign of the cap she
+                  reads it as the complete list, ticks off the five, and three
+                  mothers stay missing with nothing left pointing at them. */}
+              {c.rejected > stuck.length && (
+                <li style={{ marginBottom: 2, opacity: .85 }}>
+                  {t(`+${c.rejected - stuck.length} lainnya`,
+                     `+${c.rejected - stuck.length} more`)}
+                </li>
+              )}
             </ul>
           )}
           <div style={{ fontWeight: 400, marginTop: 6 }}>
-            {t('Perbaiki yang disebut di atas lalu catat ulang kunjungan itu, atau hubungi koordinator Anda.',
-               'Correct what is named above and record those visits again, or contact your coordinator.')}
+            {t('Coba kirim lagi dulu — kadang penyebabnya sudah diperbaiki di server. Kalau masih ditolak, perbaiki yang disebut di atas lalu catat ulang kunjungan itu, atau hubungi koordinator Anda.',
+               'Try sending again first — sometimes the cause has since been fixed on the server. If it is still refused, correct what is named above and record those visits again, or contact your coordinator.')}
           </div>
           {/* ── WHEN THE REASON FOR THE REFUSAL IS FIXED ────────────────────
               A refused visit is never retried automatically, and that is
