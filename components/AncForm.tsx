@@ -472,13 +472,6 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
               </span>
             )}
           </div>
-          <button
-            onClick={() => {
-              // Ask why BEFORE saving rather than after: afterwards the visit
-              // is already recorded and the answer is a survey, which nobody
-              // fills in. Here it is still part of finishing the visit.
-              if (quality.expectedButSkipped.length > 0 && !askingWhy) setAskingWhy(true);
-              else onSave({ values: { ...values, ...composed }, plan, skipReasons });
           {/* ── NUMBERS THAT CANNOT BE TRUE ─────────────────────────────────
               Named, never blocking — rule 4.4. The one marked willBeRefused is
               different in kind: the server has a CHECK constraint on it, so
@@ -498,7 +491,13 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
               ))}
             </div>
           )}
-
+          <button
+            onClick={() => {
+              // Ask why BEFORE saving rather than after: afterwards the visit
+              // is already recorded and the answer is a survey, which nobody
+              // fills in. Here it is still part of finishing the visit.
+              if (quality.expectedButSkipped.length > 0 && !askingWhy) setAskingWhy(true);
+              else onSave({ values: { ...values, ...composed }, plan, skipReasons });
             }}
             disabled={saving}
             style={{

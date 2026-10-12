@@ -129,3 +129,23 @@ function futureDate(value: unknown, field: string): Implausible[] {
     id: `Tanggal ${value} ada di masa depan.`,
     en: `The date ${value} is in the future.` }];
 }
+
+/**
+ * Whole days between two calendar dates, in the DEVICE's own calendar.
+ *
+ * The newborn age was computed as (Date.now() - Date.parse(dob)) / 86400000.
+ * Both halves are instants, and "2026-10-10" parses as UTC midnight, so a baby
+ * born on the 10th read as 2 days old at 22:48 on the 11th local time. Day of
+ * life decides which KN visit is due and which jaundice rule applies, so an
+ * off-by-one here is a clinical difference, not a display one.
+ *
+ * Comparing calendar dates at UTC midnight on BOTH sides removes the clock
+ * entirely: the difference is a count of days, not a span of hours.
+ */
+export function daysBetween(fromISO: string, toISO: string = todayLocal()): number | null {
+  const a = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(fromISO ?? ''));
+  const b = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(toISO ?? ''));
+  if (!a || !b) return null;
+  const ms = Date.parse(`${b[0]}T00:00:00Z`) - Date.parse(`${a[0]}T00:00:00Z`);
+  return Number.isFinite(ms) ? Math.round(ms / 86_400_000) : null;
+}

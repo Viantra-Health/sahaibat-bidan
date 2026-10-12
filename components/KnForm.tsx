@@ -197,6 +197,27 @@ export default function KnForm({ babyName, subtitle, values, onChange, onSave, s
             options={['KN1', 'KN2', 'KN3']} />
           <Field label={t('Usia (hari)', 'Age (days)')} value={values.dayOfLife}
             onChange={set('dayOfLife')} numeric placeholder={t('mis. 3', 'e.g. 3')} />
+          {/* ── A BLANK AGE IS NOT DAY ZERO ──────────────────────────────────
+              toKnInput coerces a blank to 0, and day 0 is a real value that
+              changes which jaundice rule applies — day one is always
+              pathological. Testing saved a visit showing "usia ? hari" on
+              screen and day 0 in the record, which is a blank turned into a
+              finding.
+
+              Named here rather than blocked (rule 4.4), and the coercion
+              itself cannot be removed from this repo: dayOfLife is typed
+              `number` in @sahaibat/anc-engine, so accepting null is a change
+              to that package. Until then this is what stops it being silent. */}
+          {values.dayOfLife.trim() === '' && (
+            <div style={{
+              gridColumn: '1 / -1', fontSize: 12.5, lineHeight: 1.5, borderRadius: 9,
+              padding: '9px 11px', background: '#FBF1DC', border: '1px solid #8A5D06',
+              color: '#8A5D06',
+            }}>
+              {t('Usia bayi belum diisi. Aturan ikterus menurut hari tidak bisa dijalankan, dan catatan akan menyimpan hari ke-0.',
+                 'The age is empty. The day-based jaundice rules cannot run, and the record will store day 0.')}
+            </div>
+          )}
         </Row>
         <Hint>{t('KN1 hari 0–2 · KN2 hari 3–7 · KN3 hari 8–28.',
                   'KN1 days 0–2 · KN2 days 3–7 · KN3 days 8–28.')}</Hint>

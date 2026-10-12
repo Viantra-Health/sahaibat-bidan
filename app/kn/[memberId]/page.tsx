@@ -21,7 +21,7 @@ import { generateKnFlags, shouldReferKn, knForDay } from '@sahaibat/anc-engine';
 import { useLang } from '@/lib/lang';
 import AppHeader from '@/components/AppHeader';
 import { C } from '@/components/ui';
-import { todayLocal } from '@/lib/plausibility';
+import { todayLocal, daysBetween } from '@/lib/plausibility';
 
 export default function KnVisitPage() {
   const router = useRouter();
@@ -49,7 +49,11 @@ export default function KnVisitPage() {
       // The device's calendar, not UTC -- age in days decides the jaundice rule.
       const today = todayLocal();
       if (r.dob) {
-        const days = Math.floor((Date.now() - new Date(r.dob).getTime()) / 86_400_000);
+        // Calendar days in the device's own calendar. See daysBetween: the old
+        // form subtracted two INSTANTS, and a date string parses at UTC
+        // midnight, so a baby born on the 10th read as 2 days old late on the
+        // 11th local time.
+        const days = daysBetween(r.dob, today) ?? -1;
         if (Number.isFinite(days) && days >= 0) {
           setValues((v) => ({
             ...v,

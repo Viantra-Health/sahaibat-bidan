@@ -25,7 +25,7 @@
 // and worded differently for that reason, and the refused count never hides.
 
 import { useEffect, useState } from 'react';
-import { queueCounts } from '@/lib/offlineStore';
+import { queueCounts, getRejectedVisits } from '@/lib/offlineStore';
 import { useLang } from '@/lib/lang';
 
 export default function QueueBanner() {
@@ -33,10 +33,24 @@ export default function QueueBanner() {
   const isEN = lang === 'en';
   const t = (id: string, en: string) => (isEN ? en : id);
   const [c, setC] = useState<{ waiting: number; rejected: number } | null>(null);
+  /* WHICH mother, and WHY. The first version of this banner gave a count and
+     one piece of advice — "re-record it with the gestational age filled in" —
+     which was wrong for a stuck delivery that already had one. A banner that
+     cannot say which record it means sends her looking through the register. */
+  const [stuck, setStuck] = useState<Array<{ name: string; why: string }>>([]);
 
   useEffect(() => {
     let live = true;
-    const read = () => { queueCounts().then((v) => { if (live) setC(v); }).catch(() => {}); };
+    const read = () => {
+      queueCounts().then((v) => { if (live) setC(v); }).catch(() => {});
+      getRejectedVisits().then((rows) => {
+        if (!live) return;
+        setStuck(rows.slice(0, 5).map((r: any) => ({
+          name: String(r?.memberName ?? r?.values?.motherName ?? r?.values?.babyName ?? '—'),
+          why: String(r?.syncError ?? ''),
+        })));
+      }).catch(() => {});
+    };
     read();
     // Cheap, and the number changes under her while the daemon uploads.
     const timer = setInterval(read, 15000);
@@ -73,9 +87,24 @@ export default function QueueBanner() {
         }}>
           {t(`${c.rejected} kunjungan DITOLAK server dan belum masuk ke catatan.`,
              `${c.rejected} visit${c.rejected === 1 ? '' : 's'} were REFUSED by the server and are not in the record.`)}
-          <div style={{ fontWeight: 400, marginTop: 4 }}>
-            {t('Mencoba lagi tidak akan menolong. Catat ulang kunjungan itu dengan usia kehamilan terisi, lalu hubungi koordinator Anda.',
-               'Trying again will not help. Record those visits again with the gestational age filled in, then contact your coordinator.')}
+          {stuck.length > 0 && (
+            <ul style={{ fontWeight: 400, margin: '6px 0 0', paddingLeft: 18 }}>
+              {stuck.map((r, i) => (
+                <li key={i} style={{ marginBottom: 2 }}>
+                  {r.name}
+                  {/^.*gestational_weeks.*$/.test(r.why) && (
+                    <span style={{ opacity: .85 }}>
+                      {t(' — usia kehamilan di luar batas yang diterima',
+                         ' — gestational age outside the accepted range')}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div style={{ fontWeight: 400, marginTop: 6 }}>
+            {t('Mencoba lagi tidak akan menolong. Catat ulang kunjungan itu dan perbaiki yang disebut di atas, lalu hubungi koordinator Anda.',
+               'Trying again will not help. Record those visits again, correcting what is named above, then contact your coordinator.')}
           </div>
         </div>
       )}
