@@ -177,6 +177,15 @@ export default function NewMotherPage() {
         <p style={{ color: C.dim, margin: '0 0 4px', lineHeight: 1.6 }}>
           {name} · {values.visitType} · 10T {saved.done}/{saved.of}
         </p>
+        {/* The same line the register route shows. It was on one path and not
+            the other, so whether she was told depended on which door she came
+            in by. */}
+        {!values.gestationalWeeks && (
+          <p style={{ color: C.amber, fontSize: 13, lineHeight: 1.6, margin: '0 0 4px' }}>
+            {t('Usia kehamilan dicatat sebagai tidak diketahui.',
+                'The gestational age is recorded as unknown.')}
+          </p>
+        )}
         <p style={{ color: C.dimmer, fontSize: 13, lineHeight: 1.6 }}>
           {t('Ibu baru akan dicocokkan dengan data pusat saat sinkronisasi.',
               'A new mother is matched against central records at sync.')}

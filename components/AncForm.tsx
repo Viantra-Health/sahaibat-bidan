@@ -288,19 +288,11 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
           A midwife typing LILA near the top of the form never saw the KEK
           warning without scrolling to look for it, and the bottom bar badges
           emergencies only. A warning nobody scrolls to is not a warning. */}
-      {warnings.length > 0 && (
-        <div style={{
-          border: `1px solid ${C.amber}`, borderRadius: 11, padding: '12px 14px',
-          background: C.amberSoft, marginBottom: 14,
-        }}>
-          {warnings.map((f, i) => (
-            <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: C.white, marginBottom: i < warnings.length - 1 ? 7 : 0 }}>
-              {flagMessage(f, lang)}
-            </div>
-          ))}
-        </div>
-      )}
-
+      {/* ── RED BEFORE YELLOW, ALWAYS ──────────────────────────────────
+          The warnings block used to be drawn ABOVE this one, so at 39.2 °C
+          the yellow "WAJIB PERIKSA MALARIA" notice sat on top of the red
+          "DEMAM TINGGI" emergency. She reads down; the thing that must be
+          acted on now has to be the first thing there. */}
       {emergencies.length > 0 && (
         <div role="alert" style={{
           borderRadius: 11, padding: '14px 16px', marginBottom: 14,
@@ -309,6 +301,18 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         }}>
           {emergencies.map((f, i) => (
             <div key={i} style={{ fontSize: 13.5, lineHeight: 1.5, fontWeight: 600, color: C.onDanger, marginBottom: i < emergencies.length - 1 ? 8 : 0 }}>
+              {flagMessage(f, lang)}
+            </div>
+          ))}
+        </div>
+      )}
+      {warnings.length > 0 && (
+        <div style={{
+          border: `1px solid ${C.amber}`, borderRadius: 11, padding: '12px 14px',
+          background: C.amberSoft, marginBottom: 14,
+        }}>
+          {warnings.map((f, i) => (
+            <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: C.white, marginBottom: i < warnings.length - 1 ? 7 : 0 }}>
               {flagMessage(f, lang)}
             </div>
           ))}
@@ -384,7 +388,14 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
             K3 and she would have nowhere to enter the result -- an instruction
             with no field behind it, which is how a prompt becomes something
             she learns to ignore. A fever opens the block. */}
-        {(values.visitType === 'K1' || showLabs || needsMalariaTest) ? (
+        {/* `values.malariaRdt` keeps it open once she has answered. Without
+            it, entering "negatif" cleared MALARIA_TEST_REQUIRED, the condition
+            that had opened the block went false, and the block folded away
+            taking the result she had just recorded out of sight. A field that
+            hides what you typed into it reads as having lost it. */}
+        {(values.visitType === 'K1' || showLabs || needsMalariaTest
+          || !!values.malariaRdt || !!values.hivStatus || !!values.syphilisStatus
+          || !!values.hbsagStatus || !!values.bloodSugarMg || !!values.bloodType) ? (
           <>
             <Row>
               <Select label="HIV" value={values.hivStatus} onChange={set('hivStatus')}
@@ -587,6 +598,20 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
           items={implausible}
           saving={saving}
           onCancel={() => setAskingValues(false)}
+          /* Only offered when the gestational age itself is what the server
+             will refuse. Clearing it is now safe -- the column holds an unknown
+             since phase-9k -- so the Hb and the pressure survive instead of
+             going down with it. */
+          onSaveWithout={
+            implausible.some((w) => w.field === 'gestationalWeeks' && w.willBeRefused)
+              ? () => {
+                  setAskingValues(false);
+                  const cleared = { ...values, gestationalWeeks: '' };
+                  onChange(cleared);
+                  onSave({ values: { ...cleared, ...composed }, plan, skipReasons });
+                }
+              : undefined
+          }
           onConfirm={() => {
             // She has seen them and stands by the reading. Carry on into the
             // ordinary save path -- including the skipped-items question, which

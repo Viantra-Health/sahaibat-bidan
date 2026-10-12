@@ -101,7 +101,40 @@ export function searchRegister(
   limit = DEFAULT_LIMIT
 ): SearchOutcome {
   const q = normaliseName(query);
-  if (!q) return { hits: [], more: 0, total: 0 };
+
+  /* ── A CHIP ON ITS OWN IS A QUESTION, AND IT DESERVES AN ANSWER ───────────
+     An empty query used to return nothing at all, so tapping "Bayi" and
+     expecting the babies produced an empty screen until a name was typed. The
+     chips are the four reasons she opens this register -- "show me the babies
+     I owe a visit to" is the whole point of one -- and answering it with
+     nothing reads as a broken filter.
+
+     A bare empty query with NO filter still returns nothing, deliberately:
+     that is the resting state of the screen, and dumping forty rows under the
+     search box is not a search result. */
+  const filtering = !!(filters.onlyFlow || filters.onlyRegionId || filters.seenWithinDays);
+  if (!q && !filtering) return { hits: [], more: 0, total: 0 };
+
+  if (!q && filtering) {
+    const all: SearchHit[] = [];
+    for (const r of register) {
+      if (filters.onlyFlow) {
+        const f = careFlow(r);
+        const match = filters.onlyFlow === 'anc'
+          ? (f === 'anc' || f === 'persalinan')
+          : f === filters.onlyFlow;
+        if (!match) continue;
+      }
+      if (filters.onlyRegionId != null && r.regionId !== filters.onlyRegionId) continue;
+      if (filters.seenWithinDays != null) {
+        const d = daysSince(r.lastSeenAt);
+        if (d == null || d > filters.seenWithinDays) continue;
+      }
+      all.push({ record: r, score: 0, why: [] });
+    }
+    all.sort((a, b) => a.record.name.localeCompare(b.record.name));
+    return { hits: all.slice(0, limit), more: Math.max(0, all.length - limit), total: all.length };
+  }
 
   const scored: SearchHit[] = [];
 

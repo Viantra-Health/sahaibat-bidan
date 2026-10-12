@@ -211,6 +211,26 @@ export default function DeliveryForm({ motherName, subtitle, values, onChange, o
         </div>
       )}
 
+      {/* Yellow goes where red goes -- the top. BUG-12 was fixed on the
+          antenatal form and left standing on every other one, which is how it
+          came back twice. A warning below a screen of inputs is read after the
+          decision it was meant to inform. */}
+      {warnings.length > 0 && (
+        <div style={{
+          border: `1px solid ${C.amber}`, borderRadius: 11, padding: '12px 14px',
+          background: C.amberSoft, marginBottom: 14,
+        }}>
+          {warnings.map((f, i) => (
+            <div key={i} style={{
+              fontSize: 13, lineHeight: 1.5, color: C.white,
+              marginBottom: i < warnings.length - 1 ? 7 : 0,
+            }}>
+              {flagMessage(f, lang)}
+            </div>
+          ))}
+        </div>
+      )}
+
       <Section title={t('Persalinan', 'The birth')}>
         <Row>
           <Field label={t('Tanggal', 'Date')} value={values.deliveryDate}
@@ -326,16 +346,6 @@ export default function DeliveryForm({ motherName, subtitle, values, onChange, o
         </button>
       )}
 
-      {warnings.length > 0 && (
-        <Section title={t('Perhatian', 'Attention')}>
-          {warnings.map((f, i) => (
-            <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: C.amber, marginBottom: 7 }}>
-              {flagMessage(f, lang)}
-            </div>
-          ))}
-        </Section>
-      )}
-
       <div style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, padding: 14,
         background: C.bg, borderTop: `1px solid ${C.border}`,
@@ -381,6 +391,18 @@ export default function DeliveryForm({ motherName, subtitle, values, onChange, o
           items={implausible}
           saving={saving}
           onCancel={() => setAskingValues(false)}
+          /* Same trade as the antenatal form: a gestation the server cannot
+             store should cost her that one field, not the whole birth record
+             with its blood loss and its babies. */
+          onSaveWithout={
+            implausible.some((w) => w.field === 'gestationalWeeks' && w.willBeRefused)
+              ? () => {
+                  setAskingValues(false);
+                  onChange({ ...values, gestationalWeeks: '' });
+                  onSave();
+                }
+              : undefined
+          }
           onConfirm={() => { setAskingValues(false); onSave(); }}
         />
       )}

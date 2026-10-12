@@ -196,6 +196,28 @@ export default function KnForm({ babyName, subtitle, values, onChange, onSave, s
         </div>
       )}
 
+      {/* ── BUG-12 WAS ONLY EVER FIXED ON THE ANTENATAL FORM ────────────────
+          Here the yellow warnings were still drawn in a "Perhatian" box at the
+          very bottom, below every input. "Ikterus hari ke-4" is a reason to
+          look at a baby today, and it sat under a screen's worth of fields
+          where she would reach it only after finishing. It goes where the red
+          ones go -- the top -- for the same reason they do. */}
+      {warnings.length > 0 && (
+        <div style={{
+          border: `1px solid ${C.amber}`, borderRadius: 11, padding: '12px 14px',
+          background: C.amberSoft, marginBottom: 14,
+        }}>
+          {warnings.map((f, i) => (
+            <div key={i} style={{
+              fontSize: 13, lineHeight: 1.5, color: C.white,
+              marginBottom: i < warnings.length - 1 ? 7 : 0,
+            }}>
+              {flagMessage(f, lang)}
+            </div>
+          ))}
+        </div>
+      )}
+
       <Section title={t('Kunjungan neonatal', 'Newborn visit')}>
         <Row>
           <Select label={t('Jenis', 'Type')} value={values.visitType} onChange={set('visitType')}
@@ -335,16 +357,6 @@ export default function KnForm({ babyName, subtitle, values, onChange, onSave, s
         <Field label={t('Catatan', 'Note')} value={values.note} onChange={set('note')}
           placeholder={t('mis. ibu perlu bantuan perlekatan', 'e.g. mother needs help with attachment')} />
       </Section>
-
-      {warnings.length > 0 && (
-        <Section title={t('Perhatian', 'Attention')}>
-          {warnings.map((f, i) => (
-            <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: C.amber, marginBottom: 7 }}>
-              {flagMessage(f, lang)}
-            </div>
-          ))}
-        </Section>
-      )}
 
       <div style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, padding: '12px 16px 18px',

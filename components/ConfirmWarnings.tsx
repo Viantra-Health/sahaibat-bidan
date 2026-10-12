@@ -31,11 +31,21 @@ import { useLang } from '@/lib/lang';
 import { C } from '@/components/ui';
 
 export default function ConfirmWarnings({
-  items, onConfirm, onCancel, saving,
+  items, onConfirm, onCancel, onSaveWithout, saving,
 }: {
   items: Implausible[];
   onConfirm: () => void;
   onCancel: () => void;
+  /**
+   * Save the visit with the unstorable value cleared, keeping everything else.
+   *
+   * Offered only when a field is one the SERVER will refuse. Saving "as it is"
+   * then loses the whole visit -- the Hb, the blood pressure, the MUAC, all of
+   * it -- for one number out of range, and six visits were lost that way in a
+   * single test run. Dropping the one field is the lesser loss by a long way,
+   * and it is named rather than done quietly.
+   */
+  onSaveWithout?: () => void;
   saving?: boolean;
 }) {
   const { t } = useLang();
@@ -87,6 +97,21 @@ export default function ConfirmWarnings({
         }}>
           {t('Perbaiki sekarang', 'Correct it now')}
         </button>
+        {/* The middle road, and for a refusable value it is the right one:
+            everything she measured is kept and only the number that cannot be
+            stored is dropped. Shown above "save as it is" because it is the
+            better answer, and worded so she knows exactly what is lost. */}
+        {willBeLost && onSaveWithout && (
+          <button onClick={onSaveWithout} disabled={saving} style={{
+            width: '100%', minHeight: 48, padding: 13, fontSize: 14.5, fontWeight: 700,
+            borderRadius: 11, background: C.accentSoft, color: C.teal,
+            border: `1px solid ${C.teal}`, cursor: saving ? 'default' : 'pointer',
+            marginBottom: 10,
+          }}>
+            {t('Simpan tanpa usia kehamilan — sisanya tetap tersimpan',
+               'Save without the gestational age — everything else is kept')}
+          </button>
+        )}
         <button onClick={onConfirm} disabled={saving} style={{
           width: '100%', minHeight: 48, padding: 13, fontSize: 14.5, fontWeight: 600,
           borderRadius: 11, background: 'transparent', color: C.dim,
@@ -94,7 +119,10 @@ export default function ConfirmWarnings({
         }}>
           {saving
             ? t('Menyimpan…', 'Saving…')
-            : t('Simpan apa adanya', 'Save it as it is')}
+            : willBeLost
+              ? t('Simpan apa adanya — kunjungan ini akan ditolak',
+                  'Save it as it is — this visit will be refused')
+              : t('Simpan apa adanya', 'Save it as it is')}
         </button>
       </div>
     </div>

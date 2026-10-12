@@ -118,8 +118,15 @@ export default function SearchPage() {
             : t('Warga Desa', 'Village register')}
         </h1>
         <div style={{ fontSize: 12.5, color: C.dim }}>
-          {t(`${outcome.total || register.length} tersimpan di perangkat`,
-             `${outcome.total || register.length} stored on this device`)}
+          {/* It read "N tersimpan di perangkat" using the SEARCH total, so
+              typing "Ayu" turned the device count into "4 tersimpan di
+              perangkat" -- a sentence about storage answering a question about
+              a search. Two different numbers, two different sentences. */}
+          {(query.trim() || flow || onlyHome || recentOnly)
+            ? t(`${outcome.total} ditemukan · ${register.length} tersimpan di perangkat`,
+                `${outcome.total} found · ${register.length} stored on this device`)
+            : t(`${register.length} tersimpan di perangkat`,
+                `${register.length} stored on this device`)}
         </div>
       </div>
 
