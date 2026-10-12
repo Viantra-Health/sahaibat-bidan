@@ -50,6 +50,18 @@ export interface QueuedVisit {
   referNow?: boolean;
 
   createdAt: string;
+
+  /* ── THE DATE OF THE VISIT, IN THE CALENDAR SHE IS STANDING IN ────────────
+     createdAt is an INSTANT and must stay one. The server used to derive the
+     visit date from it with createdAt.split('T')[0] -- and createdAt is
+     toISOString(), so it is the UTC date. A visit recorded at 02:00 WIB was
+     filed under the previous day, every time, which is a clinical date on a
+     clinical record and night work is not rare in this job.
+
+     Only the device knows what day it is where she is: the server sees an
+     instant and a phone that never sends a timezone. So the calendar date
+     travels as its own field, and the server prefers it. */
+  visitDate?: string | null;
   /* 'rejected' is NOT 'failed'. failed means the upload did not happen —
      no signal, a 500, a dropped connection — and trying again is the right
      answer. rejected means the server received this visit, looked at it, and

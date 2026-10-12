@@ -19,6 +19,7 @@ import { toPncInput, type PncFormValues } from '../components/PncForm';
 import { toDeliveryInput, type DeliveryFormValues } from '../components/DeliveryForm';
 import { toKnInput, toGrams, type KnFormValues } from '../components/KnForm';
 import type { BidanIdentity } from './auth';
+import { todayLocal } from './plausibility';
 
 export async function saveAncVisit(args: {
   identity: BidanIdentity;
@@ -95,6 +96,8 @@ export async function saveAncVisit(args: {
     flags: flags.map((f) => ({ type: f.type, severity: f.severity })),
     referNow: referral.refer,
     createdAt: new Date().toISOString(),
+    // Her calendar, not UTC's. See QueuedVisit.visitDate.
+    visitDate: todayLocal(),
     syncStatus: 'pending',
   };
 
@@ -132,6 +135,8 @@ export async function savePncVisit(args: {
     flags: flags.map((f) => ({ type: f.type, severity: f.severity })),
     referNow: referral.refer,
     createdAt: new Date().toISOString(),
+    // Her calendar, not UTC's. See QueuedVisit.visitDate.
+    visitDate: todayLocal(),
     syncStatus: 'pending',
   };
 
@@ -179,6 +184,8 @@ export async function saveDeliveryVisit(args: {
     flags: flags.map((f) => ({ type: f.type, severity: f.severity })),
     referNow: referral.refer,
     createdAt: new Date().toISOString(),
+    // Her calendar, not UTC's. See QueuedVisit.visitDate.
+    visitDate: todayLocal(),
     syncStatus: 'pending',
   };
 
@@ -238,6 +245,8 @@ export async function saveKnVisit(args: {
     flags: flags.map((f) => ({ type: f.type, severity: f.severity })),
     referNow: referral.refer,
     createdAt: new Date().toISOString(),
+    // Her calendar, not UTC's. See QueuedVisit.visitDate.
+    visitDate: todayLocal(),
     syncStatus: 'pending',
   };
 

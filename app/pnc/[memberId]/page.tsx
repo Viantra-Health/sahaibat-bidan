@@ -12,6 +12,7 @@ import ReferralPanel from '@/components/ReferralPanel';
 import LetterSheet from '@/components/LetterSheet';
 import { generatePncFlags, shouldReferPnc } from '@sahaibat/anc-engine';
 import { useLang } from '@/lib/lang';
+import { daysBetween } from '@/lib/plausibility';
 import AppHeader from '@/components/AppHeader';
 import VisitHistory from '@/components/VisitHistory';
 import { C } from '@/components/ui';
@@ -40,6 +41,22 @@ export default function PncVisitPage() {
     getRegisterRecord(memberId).then((r) => {
       if (!r) { setNotFound(true); return; }
       setRecord(r);
+      /* ── DAY OF THE PUERPERIUM, FROM THE BIRTH SHE ALREADY RECORDED ───────
+         "Hari ke-" was blank on every postnatal visit, so she counted the days
+         herself from a delivery that is sitting in the record two lines above.
+         It decides which KF is suggested and which findings the engine treats
+         as late, so an arithmetic slip at the end of a long day is a clinical
+         one.
+
+         Counted in the DEVICE's calendar, not from an instant -- see
+         daysBetween. Left blank when there is no recorded birth: a guessed day
+         is worse than an empty field she will fill in. Editable either way; a
+         mother may well arrive on a day the register cannot predict. */
+      const birth = (r.history ?? []).find((h) => h.kind === 'delivery' && h.date);
+      const day = birth ? daysBetween(birth.date) : null;
+      if (day != null && day >= 0) {
+        setValues((v) => ({ ...v, daysPostpartum: String(day) }));
+      }
     });
   }, [memberId, router]);
 

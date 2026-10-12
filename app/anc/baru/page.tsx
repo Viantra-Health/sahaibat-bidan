@@ -59,7 +59,7 @@ export default function NewMotherPage() {
   const [values, setValues] = useState<AncFormValues>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const { t } = useLang();
-  const [saved, setSaved] = useState<{ score: number; refer: boolean; urgency: string } | null>(null);
+  const [saved, setSaved] = useState<{ done: number; of: number; refer: boolean; urgency: string } | null>(null);
 
   useEffect(() => {
     const id = getIdentity();
@@ -122,7 +122,19 @@ export default function NewMotherPage() {
 
       const { clinical } = toEngineInputs(v, age);
       const urgency = shouldRefer(generateClinicalFlags(clinical as any)).urgency;
-      setSaved({ score: visit.qualityScore ?? 0, refer: !!visit.referNow, urgency });
+      /* ── THE SAME NUMBERS THE FORM SHOWED HER ────────────────────────────
+         This read qualityScore out of a hardcoded 10. qualityScore is a RATIO
+         rescaled to ten, and the form counts only the items that can apply to
+         this visit -- so a form reading 2/8 confirmed as "3/10", and a
+         complete 9/9 confirmed as "10/10". Two different numbers for one
+         visit, and the register page had already been fixed to use these.
+         saveAncVisit records both, for either route in. */
+      setSaved({
+        done: (visit.data as any)?.itemsCompleted ?? 0,
+        of: (visit.data as any)?.itemsExpected ?? 0,
+        refer: !!visit.referNow,
+        urgency,
+      });
       syncPendingVisits().catch(() => {});
     } finally {
       setSaving(false);
@@ -163,7 +175,7 @@ export default function NewMotherPage() {
         <div style={{ fontSize: 34, marginBottom: 10 }}>✅</div>
         <h1 style={{ fontSize: 21, margin: '0 0 6px' }}>{t('Kunjungan tersimpan', 'Visit saved')}</h1>
         <p style={{ color: C.dim, margin: '0 0 4px', lineHeight: 1.6 }}>
-          {name} · {values.visitType} · skor 10T {saved.score}/10
+          {name} · {values.visitType} · 10T {saved.done}/{saved.of}
         </p>
         <p style={{ color: C.dimmer, fontSize: 13, lineHeight: 1.6 }}>
           {t('Ibu baru akan dicocokkan dengan data pusat saat sinkronisasi.',

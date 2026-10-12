@@ -53,6 +53,38 @@ export function gestationalWeeks(r: RegisterRecord): number | null {
 }
 
 /**
+ * Which contact this visit probably is.
+ *
+ * The form defaulted to K1 on every single visit, so a mother at 34 weeks on
+ * her fifth contact opened as K1 unless the midwife noticed and changed it --
+ * and the visit type is what the whole 10T expectation is computed from, so a
+ * wrong one quietly asks for the wrong items.
+ *
+ * It is a SUGGESTION and nothing more: the field stays editable, an unexpected
+ * answer is never questioned, and a null here just leaves the old default
+ * alone. Derived only from what is recorded -- her gestational age and the
+ * contacts already done -- so it never asserts a visit that did not happen.
+ */
+export function suggestedContact(r: RegisterRecord): string | null {
+  const gw = gestationalWeeks(r);
+  if (gw == null) return null;
+  const done = (r.pregnancy?.contactsDone ?? []).map((k) => k.toUpperCase());
+
+  // The contact whose window she is in, if it has not been done.
+  const band = K_SCHEDULE.find((b) => gw >= b.from && gw <= b.to);
+  if (band && !done.includes(band.k)) return band.k;
+
+  // Otherwise the earliest one still outstanding -- a mother who booked late
+  // is having her K1 at 22 weeks, and calling it K3 would be a fiction.
+  const firstUndone = K_SCHEDULE.find((b) => !done.includes(b.k));
+  if (firstUndone) return firstUndone.k;
+
+  // Every contact is done and she is here anyway. That is a real visit; the
+  // last contact is the honest label and she can change it.
+  return K_SCHEDULE[K_SCHEDULE.length - 1].k;
+}
+
+/**
  * Everything outstanding, most urgent first.
  *
  * Every item is derived from something already recorded. Nothing here is a

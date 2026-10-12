@@ -57,7 +57,10 @@ const withPWA = require("@ducanh2912/next-pwa").default({
            signal: it is not "online or nothing", it is "try, briefly, then use
            what we have". Offline is still the normal case and still costs
            nothing. */
-        urlPattern: /^\/$|^\/search(\/.*)?$|^\/anc(\/.*)?$|^\/offline$/,
+        // Every route the app actually has. This listed only /, /search, /anc
+        // and /offline, so the postnatal, newborn and delivery screens were
+        // never covered by it -- they had no fresh-first rule at all.
+        urlPattern: /^\/$|^\/search(\/.*)?$|^\/anc(\/.*)?$|^\/pnc(\/.*)?$|^\/kn(\/.*)?$|^\/persalinan(\/.*)?$|^\/offline$/,
         handler: "NetworkFirst",
         options: {
           cacheName: "bidan-pages-v1",

@@ -10,9 +10,13 @@
 // more than usual here: a midwife is being asked to trust it with a village's
 // pregnancies.
 
+import { useEffect, useState } from 'react';
 import { C } from './ui';
 import { useLang } from '@/lib/lang';
 import { useTheme } from '@/lib/theme';
+import { clearIdentity } from '@/lib/auth';
+import { clearPasscode } from '@/lib/passcode';
+import { queueCounts } from '@/lib/offlineStore';
 
 export default function AppHeader({
   name, village, right,
@@ -23,6 +27,36 @@ export default function AppHeader({
 }) {
   const { lang, toggle, t } = useLang();
   const { theme, toggleTheme } = useTheme();
+  /* ── THERE WAS NO WAY OUT ─────────────────────────────────────────────────
+     Three rounds of testing reported it and it is not only a convenience: a
+     shared handset is normal here, and a midwife who cannot sign out either
+     works as somebody else or the device is passed on still signed in. Behind
+     a confirm, because the queue is the one thing on this phone that exists
+     nowhere else, and the sheet says what happens to it. */
+  const [signingOut, setSigningOut] = useState(false);
+  const [queued, setQueued] = useState<{ waiting: number; rejected: number } | null>(null);
+
+  // Read only while the sheet is open. Every screen mounts this header, and
+  // none of them needs the queue until she asks to leave.
+  useEffect(() => {
+    if (!signingOut) return;
+    let live = true;
+    queueCounts().then((q) => { if (live) setQueued(q); }).catch(() => {});
+    return () => { live = false; };
+  }, [signingOut]);
+
+  function signOut() {
+    /* The PIN goes with the session. It is a DEVICE lock, so leaving it behind
+       would strand whoever signs in next behind a code only the last user
+       knows -- the same reasoning as the forgotten-PIN reset in
+       components/PasscodeGate.tsx, which clears both for the same reason.
+
+       The visit queue is untouched. Each queued visit carries its own
+       profileId, so it still uploads under the midwife who recorded it. */
+    clearPasscode();
+    clearIdentity();
+    window.location.href = '/';
+  }
   // Her stored name is often already "Bidan Yuni Seran". Do not print the
   // role in front of it and say it twice.
   const display = (name ?? '').trim();
@@ -86,7 +120,73 @@ export default function AppHeader({
         >
           {lang === 'en' ? 'ID' : 'EN'}
         </button>
+        {name && (
+          <button
+            onClick={() => setSigningOut(true)}
+            aria-label={t('Keluar', 'Sign out')}
+            style={{
+              fontSize: 13, lineHeight: 1, cursor: 'pointer', padding: '5px 8px',
+              borderRadius: 20, background: 'transparent', color: C.dim,
+              border: `1px solid ${C.border}`,
+            }}
+          >
+            ⏻
+          </button>
+        )}
       </div>
+
+      {signingOut && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 60,
+          background: 'rgba(4,20,17,.72)', backdropFilter: 'blur(3px)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        }}>
+          <div style={{
+            width: '100%', maxWidth: 480, background: C.card,
+            borderRadius: '16px 16px 0 0', border: `1px solid ${C.border}`,
+            borderBottom: 'none', padding: '20px 18px 24px', textAlign: 'left',
+          }}>
+            <h2 style={{ fontSize: 17, margin: '0 0 6px' }}>{t('Keluar dari aplikasi?', 'Sign out?')}</h2>
+            <p style={{ fontSize: 13.5, color: C.dim, lineHeight: 1.6, margin: '0 0 10px' }}>
+              {t('Untuk masuk lagi Anda perlu sinyal sebentar. PIN perangkat juga akan dihapus.',
+                 'To sign in again you will need signal briefly. The device PIN is cleared too.')}
+            </p>
+            {/* Named before she leaves, not discovered afterwards. */}
+            {queued && (queued.waiting > 0 || queued.rejected > 0) ? (
+              <p style={{
+                fontSize: 13.5, lineHeight: 1.6, margin: '0 0 16px', fontWeight: 600,
+                borderRadius: 9, padding: '10px 12px',
+                background: '#FBF1DC', border: '1px solid #8A5D06', color: '#8A5D06',
+              }}>
+                {t(`${queued.waiting + queued.rejected} kunjungan masih di perangkat ini dan belum masuk catatan. `
+                   + 'Kunjungan itu TIDAK hilang dan tetap terkirim atas nama Anda, tetapi hanya setelah ada yang masuk lagi di perangkat ini. '
+                   + 'Lebih baik cari sinyal dulu.',
+                   `${queued.waiting + queued.rejected} visit(s) are still on this device and not in the record. `
+                   + 'They are NOT lost and will still upload under your name, but only once someone signs in on this device again. '
+                   + 'Better to find a signal first.')}
+              </p>
+            ) : (
+              <p style={{ fontSize: 13, color: C.dimmer, lineHeight: 1.6, margin: '0 0 16px' }}>
+                {t('Semua kunjungan sudah terkirim.', 'Every visit has been uploaded.')}
+              </p>
+            )}
+            <button onClick={() => setSigningOut(false)} style={{
+              width: '100%', minHeight: 50, padding: 14, fontSize: 15, fontWeight: 700,
+              borderRadius: 11, background: C.teal, color: C.onAccent,
+              border: 'none', cursor: 'pointer', marginBottom: 10,
+            }}>
+              {t('Tetap masuk', 'Stay signed in')}
+            </button>
+            <button onClick={signOut} style={{
+              width: '100%', minHeight: 48, padding: 13, fontSize: 14.5, fontWeight: 600,
+              borderRadius: 11, background: 'transparent', color: C.red,
+              border: `1px solid ${C.red}`, cursor: 'pointer',
+            }}>
+              {t('Keluar', 'Sign out')}
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import PasscodeGate from '@/components/PasscodeGate';
 import SyncDaemon from '@/components/SyncDaemon';
+import UpdateBanner from '@/components/UpdateBanner';
 
 export const metadata: Metadata = {
   title: 'SahAIbat Bidan',
@@ -43,6 +44,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <SyncDaemon />
+        {/* Outside the gate, like SyncDaemon: a locked app can still be a
+            release behind, and the prompt costs nothing on the lock screen. */}
+        <UpdateBanner />
         <PasscodeGate>{children}</PasscodeGate>
       </body>
     </html>

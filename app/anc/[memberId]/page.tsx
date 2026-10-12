@@ -18,6 +18,7 @@ import VisitHistory from '@/components/VisitHistory';
 import DuePanel from '@/components/DuePanel';
 import { C } from '@/components/ui';
 import LetterSheet from '@/components/LetterSheet';
+import { suggestedContact } from '@/lib/due';
 
 /** Weeks elapsed of a 40-week pregnancy, derived from EDD. Saves her retyping
  *  a number the register already knows — and a wrong gestational age silently
@@ -61,6 +62,12 @@ export default function AncVisitPage() {
       setValues((v) => ({
         ...v,
         gestationalWeeks: weeksFromEdd(r.edd),
+        /* The contact she is most likely here for, instead of K1 every time.
+           The visit type is what the 10T expectation is computed from, so a
+           mother at 34 weeks opening as K1 was quietly being asked for the
+           wrong items. A suggestion only -- the field stays editable, and a
+           record that cannot support a guess keeps the old default. */
+        visitType: suggestedContact(r) ?? v.visitType,
         p4kFasilitas: bp?.fasilitas ?? '',
         p4kTransportasi: bp?.transportasi ?? '',
         p4kDonorDarah: bp?.donorDarah ?? '',

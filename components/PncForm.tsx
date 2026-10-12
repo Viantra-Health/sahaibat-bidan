@@ -172,7 +172,13 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
           label={t('Perdarahan', 'Bleeding')}
           value={values.bleeding}
           onChange={(v) => set('bleeding')(v as PncFormValues['bleeding'])}
-          options={['', 'none', 'normal', 'high']}
+          /* ── THE LABELS WERE ALWAYS THERE ────────────────────────────────
+             This passed the raw values, so the picker read "none / normal /
+             high" to a midwife working in Indonesian while the correct words
+             sat in the Hint one line below it. Exactly the delivery-dropdown
+             bug, in the one form it was not fixed in. */
+          options={(['', 'none', 'normal', 'high'] as const).map((k) =>
+            [k, k === '' ? '—' : BLEEDING_LABEL[k][lang === 'en' ? 1 : 0]] as [string, string])}
         />
         <Hint>{(BLEEDING_LABEL[values.bleeding] ?? ['—', '—'])[lang === 'en' ? 1 : 0]}</Hint>
         <Tri label={t('Lokia berbau?', 'Foul-smelling lochia?')} value={values.lochiaFoul} onChange={set('lochiaFoul')} />
