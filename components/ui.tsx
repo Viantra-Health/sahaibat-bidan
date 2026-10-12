@@ -100,8 +100,14 @@ export function Field({ label, unit, value, onChange, numeric, placeholder }: {
   );
 }
 
+/** An option is either a bare value, or a [value, label] pair.
+ *
+ *  It used to be bare values only and rendered `{o}` straight into the option,
+ *  so a midwife chose between "rs", "pmb", "dokter_spesialis" and "tidak_ada".
+ *  The labels existed in the form already; nothing was passing them through. */
 export function Select({ label, value, onChange, options }: {
-  label: string; value: string; onChange: (v: string) => void; options: string[];
+  label: string; value: string; onChange: (v: string) => void;
+  options: Array<string | [string, string]>;
 }) {
   return (
     <label style={{ flex: 1, display: 'block', marginBottom: 11 }}>
@@ -115,9 +121,10 @@ export function Select({ label, value, onChange, options }: {
           border: `1.5px solid ${C.fieldLine}`, outline: 'none', appearance: 'none',
         }}
       >
-        {options.map((o) => (
-          <option key={o} value={o}>{o || '—'}</option>
-        ))}
+        {options.map((o) => {
+          const [val, text] = Array.isArray(o) ? o : [o, o];
+          return <option key={val} value={val}>{text || '—'}</option>;
+        })}
       </select>
     </label>
   );

@@ -22,11 +22,15 @@ import { useLang } from '@/lib/lang';
 import AppHeader from '@/components/AppHeader';
 import { C } from '@/components/ui';
 import { todayLocal, daysBetween } from '@/lib/plausibility';
+import LetterSheet from '@/components/LetterSheet';
 
 export default function KnVisitPage() {
   const router = useRouter();
   const { memberId } = useParams<{ memberId: string }>();
 
+  // Shown on screen rather than fired into the share sheet, which did
+  // nothing visible on a device without one. See components/LetterSheet.tsx.
+  const [letter, setLetter] = useState<string | null>(null);
   const [identity, setIdentity] = useState<BidanIdentity | null>(null);
   const [record, setRecord] = useState<RegisterRecord | null>(null);
   const [values, setValues] = useState<KnFormValues>(EMPTY_KN);
@@ -94,7 +98,7 @@ export default function KnVisitPage() {
     if (!record || !identity) return;
     const flags = generateKnFlags(toKnInput(values) as any);
     const day = parseInt(values.dayOfLife, 10);
-    shareReferralLetter(buildReferralLetter({
+    setLetter(buildReferralLetter({
       kind: 'kn',
       patientName: record.name,
       ageDays: Number.isFinite(day) ? day : null,
@@ -169,6 +173,8 @@ export default function KnVisitPage() {
           </>
         )}
         <button onClick={() => router.replace('/search')} style={backBtn}>{t('Selesai', 'Done')}</button>
+        {/* Rung 4 of the referral ladder, actually visible. */}
+        {letter && <LetterSheet text={letter} onClose={() => setLetter(null)} />}
       </main>
     );
   }

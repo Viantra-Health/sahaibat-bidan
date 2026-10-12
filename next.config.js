@@ -44,10 +44,24 @@ const withPWA = require("@ducanh2912/next-pwa").default({
       // than no answer.
       { urlPattern: /^\/api\/.*/, handler: "NetworkOnly" },
       {
+        /* ── NETWORK FIRST, WITH THE CACHE AS THE FALLBACK ──────────────────
+           This was StaleWhileRevalidate, which serves the cached page and
+           fetches a new one for NEXT time. The consequence found in testing:
+           the first open after a release still ran the old build, and the new
+           one appeared only on the following load, with no prompt. A midwife
+           who opens the app once a day runs a fixed clinical rule a day late.
+
+           NetworkFirst inverts that — online she gets the deployed build,
+           offline she gets the cache, which is the behaviour this app actually
+           wants. The three-second timeout is what keeps it honest on a weak
+           signal: it is not "online or nothing", it is "try, briefly, then use
+           what we have". Offline is still the normal case and still costs
+           nothing. */
         urlPattern: /^\/$|^\/search(\/.*)?$|^\/anc(\/.*)?$|^\/offline$/,
-        handler: "StaleWhileRevalidate",
+        handler: "NetworkFirst",
         options: {
           cacheName: "bidan-pages-v1",
+          networkTimeoutSeconds: 3,
           expiration: { maxEntries: 50, maxAgeSeconds: 7 * 24 * 60 * 60 },
         },
       },

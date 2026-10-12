@@ -17,6 +17,7 @@ import AppHeader from '@/components/AppHeader';
 import VisitHistory from '@/components/VisitHistory';
 import DuePanel from '@/components/DuePanel';
 import { C } from '@/components/ui';
+import LetterSheet from '@/components/LetterSheet';
 
 /** Weeks elapsed of a 40-week pregnancy, derived from EDD. Saves her retyping
  *  a number the register already knows — and a wrong gestational age silently
@@ -34,6 +35,9 @@ export default function AncVisitPage() {
   const router = useRouter();
   const { memberId } = useParams<{ memberId: string }>();
 
+  // Shown on screen rather than fired into the share sheet, which did
+  // nothing visible on a device without one. See components/LetterSheet.tsx.
+  const [letter, setLetter] = useState<string | null>(null);
   const [identity, setIdentity] = useState<BidanIdentity | null>(null);
   const [record, setRecord] = useState<RegisterRecord | null>(null);
   const [values, setValues] = useState<AncFormValues>(EMPTY_FORM);
@@ -103,7 +107,7 @@ export default function AncVisitPage() {
     if (!record || !identity) return;
     const { clinical } = toEngineInputs(values, record.ageYears);
     const flags = generateClinicalFlags(clinical as any);
-    shareReferralLetter(buildReferralLetter({
+    setLetter(buildReferralLetter({
       kind: 'anc',
       patientName: record.name,
       ageYears: record.ageYears,
@@ -123,7 +127,7 @@ export default function AncVisitPage() {
         values.complaints || null,
       ].filter(Boolean) as string[],
       reasons: flags.filter((f) => f.referral).map((f) => f.message_id),
-    }), record.name);
+    }));
   }
 
   if (notFound) {
@@ -169,6 +173,8 @@ export default function AncVisitPage() {
         }}>
           Bukan dia — cari lagi
         </button>
+        {/* Rung 4 of the referral ladder, actually visible. */}
+        {letter && <LetterSheet text={letter} onClose={() => setLetter(null)} />}
       </main>
     );
   }

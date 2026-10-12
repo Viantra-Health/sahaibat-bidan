@@ -53,7 +53,11 @@ export interface DeliveryFormValues {
 }
 
 export const EMPTY_BABY: BabyValues = {
-  outcome: 'hidup', sex: '', weightGrams: '', lengthCm: '',
+  /* UNANSWERED, not 'hidup'. Every other question on this form starts blank,
+     and this is the one where a default that is usually right is worst when it
+     is wrong: a stillbirth recorded as a live birth because nobody changed it.
+     "Nothing is pre-accepted" applies here most of all. */
+  outcome: '', sex: '', weightGrams: '', lengthCm: '',
   criedImmediately: null, imd: null, vitaminK: null, hepatitisB0: null, name: '',
 };
 
@@ -66,7 +70,8 @@ export const EMPTY_DELIVERY: DeliveryFormValues = {
   deliveryTime: '',
   place: '', placeName: '', attendant: '', attendantName: '',
   mode: '', gestationalWeeks: '', bloodLossMl: '', complications: '',
-  motherOutcome: 'hidup',
+  // Same rule, and a maternal death carries a mandatory audit (AMP).
+  motherOutcome: '',
   babies: [{ ...EMPTY_BABY }],
 };
 
@@ -158,7 +163,12 @@ export default function DeliveryForm({ motherName, subtitle, values, onChange, o
 
   const emergencies = flags.filter((f) => f.severity === 'EMERGENCY');
   const warnings = flags.filter((f) => f.severity === 'WARNING');
-  const opt = (rows: Array<[string, string, string]>) => rows.map((r) => r[0]);
+  /* The LABEL, in her language — not the code. This mapped every row to r[0],
+     so the dropdown offered "rs", "pmb", "dokter_spesialis" and "tidak_ada"
+     while the correct words sat in a Hint one line underneath it. The labels
+     were always in the table; nothing was passing them through. */
+  const opt = (rows: Array<[string, string, string]>): Array<[string, string]> =>
+    rows.map((r) => [r[0], r[lang === 'en' ? 2 : 1]]);
   const labelOf = (rows: Array<[string, string, string]>, v: string) =>
     (rows.find((r) => r[0] === v) ?? rows[0])[lang === 'en' ? 2 : 1];
 
@@ -237,10 +247,12 @@ export default function DeliveryForm({ motherName, subtitle, values, onChange, o
         <Hint>{t('Pisahkan dengan koma.', 'Separate with commas.')}</Hint>
         <Select label={t('Keadaan ibu', 'Mother’s outcome')} value={values.motherOutcome}
           onChange={(v) => set('motherOutcome')(v as DeliveryFormValues['motherOutcome'])}
-          options={['hidup', 'mati']} />
+          options={[['', '—'], ['hidup', 'Hidup'], ['mati', 'Meninggal']]} />
         <Hint>{values.motherOutcome === 'mati'
           ? t('Meninggal — wajib dilaporkan (AMP).', 'Died — mandatory notification (AMP).')
-          : t('Hidup', 'Alive')}</Hint>
+          : values.motherOutcome === 'hidup'
+            ? t('Hidup', 'Alive')
+            : t('Belum dijawab.', 'Not answered yet.')}</Hint>
       </Section>
 
       {values.babies.map((b, i) => (
@@ -249,7 +261,7 @@ export default function DeliveryForm({ motherName, subtitle, values, onChange, o
           <Row>
             <Select label={t('Keadaan', 'Outcome')} value={b.outcome}
               onChange={(v) => setBaby(i)('outcome')(v as BabyValues['outcome'])}
-              options={['hidup', 'mati']} />
+              options={[['', '—'], ['hidup', 'Hidup'], ['mati', 'Meninggal']]} />
             <Select label={t('Jenis kelamin', 'Sex')} value={b.sex}
               onChange={(v) => setBaby(i)('sex')(v as BabyValues['sex'])}
               options={['', 'L', 'P']} />

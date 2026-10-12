@@ -22,6 +22,7 @@ import { generatePncFlags, shouldReferPnc } from '@sahaibat/anc-engine';
 import { C } from '@/components/ui';
 import { useLang } from '@/lib/lang';
 import AppHeader from '@/components/AppHeader';
+import LetterSheet from '@/components/LetterSheet';
 
 function ageFromDob(dob: string): number | null {
   const d = new Date(dob);
@@ -32,6 +33,9 @@ function ageFromDob(dob: string): number | null {
 
 export default function NewPncPage() {
   const router = useRouter();
+  // Shown on screen rather than fired into the share sheet, which did
+  // nothing visible on a device without one. See components/LetterSheet.tsx.
+  const [letter, setLetter] = useState<string | null>(null);
   const [identity, setIdentity] = useState<BidanIdentity | null>(null);
   const [step, setStep] = useState<'who' | 'visit'>('who');
 
@@ -108,7 +112,7 @@ export default function NewPncPage() {
   function handleLetter() {
     if (!identity) return;
     const flags = generatePncFlags(toPncInput(values) as any);
-    shareReferralLetter(buildReferralLetter({
+    setLetter(buildReferralLetter({
       kind: 'pnc',
       patientName: name.trim(),
       ageYears: age,
@@ -128,7 +132,7 @@ export default function NewPncPage() {
         values.complaints || null,
       ].filter(Boolean) as string[],
       reasons: flags.filter((f) => f.referral).map((f) => f.message_id),
-    }), name.trim());
+    }));
   }
 
   if (!identity) return null;
@@ -243,6 +247,8 @@ export default function NewPncPage() {
         {error && <p style={{ color: C.red, fontSize: 13.5, marginBottom: 14 }}>{error}</p>}
 
         <button onClick={next} style={primaryBtn}>{t('Lanjut ke pemeriksaan →', 'Continue to the examination →')}</button>
+        {/* Rung 4 of the referral ladder, actually visible. */}
+        {letter && <LetterSheet text={letter} onClose={() => setLetter(null)} />}
       </main>
     );
   }
