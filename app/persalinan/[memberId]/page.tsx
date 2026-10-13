@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
+import { referAfterSave } from '@/lib/referDecision';
 import { getRegisterRecord, type RegisterRecord } from '@/lib/offlineStore';
 import { saveDeliveryVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
@@ -64,7 +65,7 @@ export default function DeliveryPage() {
       });
       const flags = generateDeliveryFlags(toDeliveryInput(values) as any);
       setSaved({
-        refer: !!visit.referNow,
+        refer: referAfterSave(visit),
         urgency: shouldReferDelivery(flags).urgency,
         /* ── COUNT WHAT WILL ACTUALLY BE REGISTERED ──────────────────────────
            This counted everything that was not marked dead, so a baby whose
@@ -83,11 +84,12 @@ export default function DeliveryPage() {
     }
   }
 
-  function handleLetter() {
+  function handleLetter(destination?: string | null) {
     if (!record || !identity) return;
     const flags = generateDeliveryFlags(toDeliveryInput(values) as any);
     setLetter(buildReferralLetter({
       kind: 'pnc',
+      destination,
       patientName: record.name,
       ageYears: record.ageYears,
       village: record.village,
@@ -158,7 +160,12 @@ export default function DeliveryPage() {
                 ? t('RUJUKAN DARURAT — dampingi ibu sekarang.', 'EMERGENCY REFERRAL — stay with her now.')
                 : t('Rujukan dibuat.', 'A referral was created.')}
             </p>
-            <button onClick={handleLetter} style={letterBtn}>
+            {/* () => handleLetter() rather than the bare handler: it takes an optional
+                destination now, and React would hand it a MouseEvent as that
+                argument. This page has no ReferralPanel, so there is no
+                selection to pass -- the letter is built without an addressee and
+                the receiving facility is written in by hand. */}
+            <button onClick={() => handleLetter()} style={letterBtn}>
               {t('📄 Buat surat rujukan', '📄 Create referral letter')}
             </button>
           </>

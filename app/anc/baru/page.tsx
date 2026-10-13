@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { normalisePhone, parseNik, isNikShapeValid, nikDisagreements } from '@sahaibat/identity';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
+import { referAfterSave } from '@/lib/referDecision';
 import { saveAncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
 import type { PlanState } from '@/components/PlanPanel';
@@ -132,7 +133,7 @@ export default function NewMotherPage() {
       setSaved({
         done: (visit.data as any)?.itemsCompleted ?? 0,
         of: (visit.data as any)?.itemsExpected ?? 0,
-        refer: !!visit.referNow,
+        refer: referAfterSave(visit),
         urgency,
       });
       syncPendingVisits().catch(() => {});
@@ -142,12 +143,13 @@ export default function NewMotherPage() {
   }
 
   // Rung 4: needs no network, no provider, nobody at the other end.
-  function handleLetter() {
+  function handleLetter(destination?: string | null) {
     if (!identity) return;
     const { clinical } = toEngineInputs(values, age);
     const flags = generateClinicalFlags(clinical as any);
     setLetter(buildReferralLetter({
       kind: 'anc',
+      destination,
       patientName: name.trim(),
       ageYears: age,
       village: identity.village,

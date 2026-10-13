@@ -40,6 +40,12 @@ export default function QueueBanner() {
      cannot say which record it means sends her looking through the register. */
   const [stuck, setStuck] = useState<Array<{ name: string; visitType: string; why: { id: string; en: string } | null }>>([]);
   const [retrying, setRetrying] = useState(false);
+  /* What the last press actually achieved. Without this the button was a
+     mystery: a tester pressed it, six refused visits stayed six, and there was
+     nothing on screen to say whether it had run, done nothing, or failed. The
+     count not moving is CORRECT when the refusal still stands -- it just has to
+     say so, because silence reads as broken. */
+  const [retryOutcome, setRetryOutcome] = useState<string | null>(null);
 
   /* Lifted out of the effect because the retry button needs it too. A local
      `read` inside the effect left the banner showing the old counts for
@@ -138,9 +144,24 @@ export default function QueueBanner() {
           <button
             onClick={async () => {
               setRetrying(true);
+              setRetryOutcome(null);
               try {
-                await retryRejectedVisits();
+                const tried = await retryRejectedVisits();
                 await syncPendingVisits();
+                /* Count again AFTER the sync. Anything still refused was refused a
+                   second time for a reason that has not been fixed yet, and she needs
+                   to be told that plainly rather than left looking at the same six. */
+                const left = (await getRejectedVisits()).length;
+                const through = Math.max(0, tried - left);
+                setRetryOutcome(
+                  tried === 0
+                    ? t('Tidak ada yang perlu dikirim lagi.', 'Nothing left to resend.')
+                    : left === 0
+                      ? t(`${tried} kunjungan berhasil masuk catatan.`, `${tried} visits reached the record.`)
+                      : through === 0
+                        ? t(`${left} kunjungan masih ditolak — penyebabnya belum diperbaiki di server.`, `${left} still refused — the cause has not been fixed yet.`)
+                        : t(`${through} masuk catatan, ${left} masih ditolak.`, `${through} reached the record, ${left} still refused.`),
+                );
               } finally {
                 setRetrying(false);
                 read();
@@ -158,6 +179,11 @@ export default function QueueBanner() {
               ? t('Mencoba…', 'Trying…')
               : t('Coba kirim lagi', 'Try sending again')}
           </button>
+          {retryOutcome && !retrying && (
+            <p style={{ marginTop: 7, fontSize: 12.5, lineHeight: 1.5, color: '#8A5D06' }}>
+              {retryOutcome}
+            </p>
+          )}
         </div>
       )}
     </div>

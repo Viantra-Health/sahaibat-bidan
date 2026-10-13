@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
+import { referAfterSave } from '@/lib/referDecision';
 import { normalisePhone, parseNik, isNikShapeValid, nikDisagreements } from '@sahaibat/identity';
 import { savePncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
@@ -102,18 +103,19 @@ export default function NewPncPage() {
       await saveVisit(visit);
 
       const flags = generatePncFlags(toPncInput(values) as any);
-      setSaved({ refer: !!visit.referNow, urgency: shouldReferPnc(flags).urgency });
+      setSaved({ refer: referAfterSave(visit), urgency: shouldReferPnc(flags).urgency });
       syncPendingVisits().catch(() => {});
     } finally {
       setSaving(false);
     }
   }
 
-  function handleLetter() {
+  function handleLetter(destination?: string | null) {
     if (!identity) return;
     const flags = generatePncFlags(toPncInput(values) as any);
     setLetter(buildReferralLetter({
       kind: 'pnc',
+      destination,
       patientName: name.trim(),
       ageYears: age,
       village: identity.village,

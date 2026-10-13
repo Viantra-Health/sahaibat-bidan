@@ -38,6 +38,16 @@ export interface ReferralLetterInput {
   context?: string | null;
   findings: string[];
   reasons: string[];
+  /**
+   * Where she is sending her, as she chose it in the referral panel.
+   *
+   * A surat rujukan with no addressee is half a document: the receiving clinic
+   * cannot tell whether it was meant for them, and nobody can audit where a
+   * woman was sent. The panel has always let her SELECT a destination and the
+   * selection was never read -- it highlighted a row and changed nothing that
+   * left the device.
+   */
+  destination?: string | null;
 }
 
 function today(): string {
@@ -68,6 +78,10 @@ export function buildReferralLetter(input: ReferralLetterInput): string {
   } as const;
   L.push(`Jenis        : ${KIND_LABEL[input.kind]}${input.visitType ? ` — ${input.visitType}` : ''}`);
   if (input.context) L.push(`Keterangan   : ${input.context}`);
+  /* Named only when she picked one. Never a guess and never a default: a letter
+     addressed to the wrong Puskesmas is worse than one she fills in by hand at
+     the desk, which is what the blank invites. */
+  if (input.destination) L.push(`Kepada       : ${input.destination}`);
   L.push('');
 
   L.push('TEMUAN KLINIS');

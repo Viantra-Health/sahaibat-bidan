@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
+import { referAfterSave } from '@/lib/referDecision';
 import { getRegisterRecord, getLocalDeliveryDate, type RegisterRecord } from '@/lib/offlineStore';
 import { savePncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
@@ -105,7 +106,7 @@ export default function PncVisitPage() {
         values,
       });
       const flags = generatePncFlags(toPncInput(values) as any);
-      setSaved({ refer: !!visit.referNow, urgency: shouldReferPnc(flags).urgency });
+      setSaved({ refer: referAfterSave(visit), urgency: shouldReferPnc(flags).urgency });
       syncPendingVisits().catch(() => {});
     } finally {
       setSaving(false);
@@ -115,11 +116,12 @@ export default function PncVisitPage() {
   // Rung 4 of the referral ladder: a letter she can hand over. It needs no
   // network, no provider on the platform and nobody at the other end who has
   // heard of us — which is what actually happens in rural Indonesia.
-  function handleLetter() {
+  function handleLetter(destination?: string | null) {
     if (!record || !identity) return;
     const flags = generatePncFlags(toPncInput(values) as any);
     setLetter(buildReferralLetter({
       kind: 'pnc',
+      destination,
       patientName: record.name,
       ageYears: record.ageYears,
       village: record.village,

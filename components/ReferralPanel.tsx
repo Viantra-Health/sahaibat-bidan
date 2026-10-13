@@ -50,7 +50,7 @@ const ORDER_ROUTINE = ['dok', 'puskesmas', 'hospital', 'provider'];
 export default function ReferralPanel({ profileId, urgency, onLetter }: {
   profileId: string;
   urgency: 'emergency' | 'urgent' | 'routine' | 'none';
-  onLetter: () => void;
+  onLetter: (destination?: string | null) => void;
 }) {
   const [targets, setTargets] = useState<ReferralTarget[]>([]);
   const { t, lang } = useLang();
@@ -147,14 +147,21 @@ export default function ReferralPanel({ profileId, urgency, onLetter }: {
         </p>
       )}
 
-      {/* Rung 4. Always here, always works. */}
-      <button onClick={onLetter} style={{
+      {/* Rung 4. Always here, always works.
+          It now carries the SELECTION. `chosen` was write-only state: tapping a
+          destination highlighted it and nothing ever read the value, so picking
+          a Puskesmas or a clinic doctor changed nothing about the letter, the
+          record or anything that left the device. A retest reported it as
+          "tapping a row only highlights it", which was exactly right. */}
+      <button onClick={() => onLetter(targets.find((x) => x.ref === chosen)?.name ?? null)} style={{
         width: '100%', marginTop: 4, padding: 13, borderRadius: 11, background: 'transparent',
         color: C.white, fontWeight: 600, fontSize: 14.5,
         border: `1px solid ${groups.length === 0 ? C.teal : C.dimmer}`,
         cursor: 'pointer',
       }}>
-        {t('📄 Buat surat rujukan', '📄 Create referral letter')}
+        {chosen
+          ? t('📄 Buat surat rujukan ke tujuan ini', '📄 Create referral letter to this destination')
+          : t('📄 Buat surat rujukan', '📄 Create referral letter')}
       </button>
       <p style={{ fontSize: 11.5, color: C.dimmer, lineHeight: 1.55, marginTop: 8 }}>
         {t('Surat bisa dibuat tanpa sinyal dan diberikan langsung kepada ibu.',

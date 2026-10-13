@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
+import { referAfterSave } from '@/lib/referDecision';
 import { getRegisterRecord, type RegisterRecord } from '@/lib/offlineStore';
 import { saveAncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
@@ -103,7 +104,7 @@ export default function AncVisitPage() {
         score: visit.qualityScore ?? 0,
         done: (visit.data as any)?.itemsCompleted ?? 0,
         of: (visit.data as any)?.itemsExpected ?? 10,
-        refer: !!visit.referNow, urgency,
+        refer: referAfterSave(visit), urgency,
       });
       // Best-effort. The visit is already durable in IndexedDB, so a failure
       // here changes nothing except when it reaches the dashboard.
@@ -115,12 +116,13 @@ export default function AncVisitPage() {
 
   // Rung 4 of the referral ladder: a letter she carries. Needs no network, no
   // provider on the platform, and nobody at the other end who has heard of us.
-  function handleLetter() {
+  function handleLetter(destination?: string | null) {
     if (!record || !identity) return;
     const { clinical } = toEngineInputs(values, record.ageYears);
     const flags = generateClinicalFlags(clinical as any);
     setLetter(buildReferralLetter({
       kind: 'anc',
+      destination,
       patientName: record.name,
       ageYears: record.ageYears,
       village: record.village,

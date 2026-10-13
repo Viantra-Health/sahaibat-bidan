@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
+import { referAfterSave } from '@/lib/referDecision';
 import { getRegisterRecord, type RegisterRecord } from '@/lib/offlineStore';
 import { saveKnVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
@@ -87,19 +88,20 @@ export default function KnVisitPage() {
         values,
       });
       const flags = generateKnFlags(toKnInput(values) as any);
-      setSaved({ refer: !!visit.referNow, urgency: shouldReferKn(flags).urgency });
+      setSaved({ refer: referAfterSave(visit), urgency: shouldReferKn(flags).urgency });
       syncPendingVisits().catch(() => {});
     } finally {
       setSaving(false);
     }
   }
 
-  function handleLetter() {
+  function handleLetter(destination?: string | null) {
     if (!record || !identity) return;
     const flags = generateKnFlags(toKnInput(values) as any);
     const day = parseInt(values.dayOfLife, 10);
     setLetter(buildReferralLetter({
       kind: 'kn',
+      destination,
       patientName: record.name,
       ageDays: Number.isFinite(day) ? day : null,
       motherName: record.motherName,
