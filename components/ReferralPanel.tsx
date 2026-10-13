@@ -27,7 +27,7 @@ const KIND_LABEL: Record<string, [string, string]> = {
   puskesmas: ['Puskesmas', 'Puskesmas'],
   hospital:  ['Rumah sakit', 'Hospital'],
   provider:  ['Faskes terdaftar', 'Registered facility'],
-  dok:       ['Dokter DOK', 'DOK doctor'],
+  dok:       ['Dokter klinik', 'Clinic doctor'],
 };
 
 /* An emergency inverts the ladder. A Puskesmas is the right first stop for a
@@ -35,7 +35,17 @@ const KIND_LABEL: Record<string, [string, string]> = {
    an operating theatre -- so when the engine has called it an emergency, the
    hospital is listed first. She is reading this while someone is bleeding. */
 const ORDER_EMERGENCY = ['hospital', 'puskesmas', 'provider', 'dok'];
-const ORDER_ROUTINE = ['puskesmas', 'hospital', 'provider', 'dok'];
+/* HER OWN CLINIC DOCTOR COMES FIRST for anything that is not an emergency.
+   Sanjib, 2026-10-13: the bidan does much of the care and refers to a doctor
+   when she needs one -- ideally her own clinic doctor -- and falls back to a
+   Puskesmas or another doctor only when there is no doctor available to her.
+   'dok' was last in this list, which is where a kind lands when nothing ever
+   produced one; it is produced now, so the order has to mean something.
+
+   The EMERGENCY order is deliberately unchanged. A haemorrhage needs a theatre,
+   not a consulting room, and reordering emergency triage is not a change to
+   make while fixing a routing gap. */
+const ORDER_ROUTINE = ['dok', 'puskesmas', 'hospital', 'provider'];
 
 export default function ReferralPanel({ profileId, urgency, onLetter }: {
   profileId: string;
