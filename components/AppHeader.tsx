@@ -202,6 +202,20 @@ export default function AppHeader({
             }}>
               {t('Keluar', 'Sign out')}
             </button>
+            {/* ── WHICH BUILD IS THIS? ──────────────────────────────────────
+                Put inside the sign-out sheet on purpose: a midwife never needs
+                it, and anybody testing or supporting the app needs it badly and
+                can reach it in two taps without DevTools.
+
+                A retest had to clear the service-worker cache by hand to see a
+                previous round of fixes, which means some "unchanged" verdicts
+                may have been measurements of an old build. There was no way to
+                tell from inside the app, and a tester who cannot name the build
+                cannot report against it. */}
+            <p style={{ marginTop: 14, fontSize: 10.5, color: C.dimmer, textAlign: 'center', lineHeight: 1.5 }}>
+              {t('Versi aplikasi', 'App version')}:{' '}
+              {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 8) || 'dev'}
+            </p>
           </div>
         </div>
       )}
