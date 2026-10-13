@@ -54,6 +54,11 @@ export default function SearchPage() {
     refreshTargets(id.profileId).catch(() => {});
   }, [router]);
 
+  /* Is anything narrowing the register right now? The heading and the results
+     list MUST ask this the same way: when they disagreed, a chip produced
+     "20 ditemukan" above an empty list. Derived once, read twice. */
+  const narrowing = !!(query.trim() || flow || onlyHome || recentOnly);
+
   const filters: SearchFilters = useMemo(() => ({
     homeRegionId: identity?.regionId ?? null,
     preferPregnant: true,               // this app is about pregnancy
@@ -122,7 +127,7 @@ export default function SearchPage() {
               typing "Ayu" turned the device count into "4 tersimpan di
               perangkat" -- a sentence about storage answering a question about
               a search. Two different numbers, two different sentences. */}
-          {(query.trim() || flow || onlyHome || recentOnly)
+          {narrowing
             ? t(`${outcome.total} ditemukan · ${register.length} tersimpan di perangkat`,
                 `${outcome.total} found · ${register.length} stored on this device`)
             : t(`${register.length} tersimpan di perangkat`,
@@ -191,7 +196,14 @@ export default function SearchPage() {
         <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.5, marginBottom: 16 }}>{status}</p>
       )}
 
-      {query.trim() && (
+      {/* THE GUARD HAS TO MATCH WHAT THE LIBRARY ANSWERS, not just the text box.
+          This read `query.trim() &&`, so tapping a chip with nothing typed
+          rendered no rows -- while the heading above, which is OUTSIDE this
+          block, correctly reported "20 ditemukan" from the same outcome. The
+          library fix for a chip-only query landed and this list never used it.
+          A count and an empty list is worse than either alone: it tells her the
+          app found twenty women and then shows her none of them. */}
+      {narrowing && (
         <>
           {/* Two destinations per person, both one tap. Which visit she is
               doing is something she knows and the register does not — a
