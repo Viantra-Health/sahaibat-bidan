@@ -57,12 +57,29 @@ export const ghostBtn: React.CSSProperties = {
   border: `1.5px dashed ${C.borderStrong}`, cursor: 'pointer',
 };
 
-export function Section({ title, children }: { title: string; children: React.ReactNode }) {
+export function Section({ title, note, children }: {
+  title: string;
+  /**
+   * What this section is FOR, in a sentence.
+   *
+   * The title is a tiny uppercase label — right for "T8 · LABORATORIUM" and
+   * wrong for anything that has to be read. A number on its own teaches
+   * nobody: a midwife trained on the ten knows what T8 is, a new staff member
+   * being shown the app does not, and neither should have to hold the
+   * Kemenkes list in their head to use a form. So the purpose goes here, in
+   * normal case, where it can actually be read.
+   */
+  note?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section style={{ marginBottom: 14, padding: '14px 15px', borderRadius: 12,
       background: C.card, border: `1px solid ${C.border}` }}>
       <h2 style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.11em', textTransform: 'uppercase',
-        color: C.teal, margin: '0 0 11px' }}>{title}</h2>
+        color: C.teal, margin: note ? '0 0 3px' : '0 0 11px' }}>{title}</h2>
+      {note && (
+        <p style={{ fontSize: 11.5, lineHeight: 1.45, color: C.dim, margin: '0 0 11px' }}>{note}</p>
+      )}
       {children}
     </section>
   );

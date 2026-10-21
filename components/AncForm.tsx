@@ -384,7 +384,30 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         </Row>
       </Section>
 
-      <Section title={t('T1–T2 · Timbang & Tekanan Darah', 'T1–T2 · Weight & Blood Pressure')}>
+      {/* ══ THE TEN, IN THE NATIONAL ORDER ════════════════════════════════
+          RENUMBERED AND REORDERED 21 OCT 2026. The engine was aligned to the
+          Kemenkes sequence (Pedoman Pelayanan Antenatal Terpadu) and this form
+          was not, so the screen said "T6 · Laboratorium" where the standard
+          says T8, "T7 · Temu Wicara" where it says T10, and "T8 · Presentasi
+          Janin" where it says T5. The data recorded was always correct and so
+          was the score — only these labels were wrong, which is the worst kind
+          of wrong: a midwife reconciling this form against her register or her
+          training found numbers that did not match, and nothing in the product
+          told her which to trust.
+
+          EVERY SECTION NOW CARRIES WHAT IT IS FOR. A bare "T10" teaches
+          nobody. A midwife trained on the ten knows it; a new staff member
+          being shown the app does not, and neither should have to hold the
+          Kemenkes list in their head to fill in a form.
+
+          GROUPED BY WHAT IS MEASURED TOGETHER, not one section per item: LILA
+          and fundal height are both the tape measure, presentation and DJJ are
+          both the examination. Ascending order throughout, so the form and the
+          register read the same way down the page. */}
+
+      <Section title={t('T1–T2 · Berat, Tinggi & Tekanan Darah', 'T1–T2 · Weight, Height & Blood Pressure')}
+        note={t('Timbang berat badan, ukur tinggi badan, dan ukur tekanan darah.',
+                'Weigh her, measure her height, and take her blood pressure.')}>
         <Row>
           <Field label="BB" unit="kg" value={values.weightKg} onChange={set('weightKg')} numeric />
           <Field label="TB" unit="cm" value={values.heightCm} onChange={set('heightCm')} numeric />
@@ -402,25 +425,53 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
             Kemenkes malaria rule verbatim -- "fever, or a history of fever in
             the last 48 hours" -- it catches the woman who was febrile at three
             in the morning, and unlike the thermometer it works on a device
-            where there is no thermometer at all. */}
+            where there is no thermometer at all.
+
+            NOT ONE OF THE TEN, and deliberately not labelled as one. */}
         <Field label={t('Suhu', 'Temperature')} unit="°C" value={values.temperatureC}
           onChange={set('temperatureC')} numeric placeholder="36.8" />
         <Tri label={t('Demam dalam 48 jam terakhir?', 'Fever in the last 48 hours?')}
           value={values.feverLast48h} onChange={set('feverLast48h')} />
       </Section>
 
-      <Section title={t('T3 · Tinggi Fundus, LILA, DJJ', 'T3 · Fundal Height, LILA, DJJ')}>
+      {/* T3 IS EXPECTED AT THE FIRST CONTACT ONLY. Re-measuring LILA at K4 is
+          not what the standard asks, and the scorer does not expect it — so
+          this is not gated away later, but nor is a blank one a gap. */}
+      <Section title={t('T3–T4 · Status Gizi (LILA) & Tinggi Fundus', 'T3–T4 · Nutritional Status (MUAC) & Fundal Height')}
+        note={t('T3 nilai status gizi dengan mengukur LILA — di bawah 23,5 cm berarti risiko KEK. T4 ukur tinggi fundus uteri untuk menilai pertumbuhan janin.',
+                'T3 assesses nutrition by measuring mid-upper-arm circumference — under 23.5 cm means chronic energy deficiency. T4 measures fundal height to judge fetal growth.')}>
         <Row>
-          <Field label="TFU" unit="cm" value={values.fundalHeightCm} onChange={set('fundalHeightCm')} numeric />
           <Field label="LILA" unit="cm" value={values.lilaCm} onChange={set('lilaCm')} numeric />
+          <Field label="TFU" unit="cm" value={values.fundalHeightCm} onChange={set('fundalHeightCm')} numeric />
         </Row>
         {num(values.lilaCm) != null && num(values.lilaCm)! < 23.5 && (
           <Hint warn>LILA &lt; 23,5 cm — risiko KEK</Hint>
         )}
-        <Field label="DJJ" unit="dpm" value={values.djjBpm} onChange={set('djjBpm')} numeric />
       </Section>
 
-      <Section title={t('T4–T5 · Imunisasi TT & Tablet Fe', 'T4–T5 · TT Immunisation & Iron')}>
+      {/* ── T5 IS ONE ITEM COVERING TWO THINGS ───────────────────────────
+          The standard reads "tentukan presentasi janin dan DJJ", so they belong
+          in one section. They are not asked at the same gestation though: DJJ
+          is recorded whenever it can be heard, and presentation is scored only
+          from 36 weeks. Hiding the presentation field earlier is not cosmetic —
+          the scorer does not expect it, so an empty field would imply a gap
+          that is not one. */}
+      <Section title={t('T5 · Presentasi Janin & DJJ', 'T5 · Fetal Presentation & Heart Rate')}
+        note={gw >= 36
+          ? t('Tentukan presentasi janin dan denyut jantung janin.',
+              'Determine the fetal presentation and the fetal heart rate.')
+          : t('Tentukan denyut jantung janin. Presentasi ditanyakan mulai 36 minggu.',
+              'Record the fetal heart rate. Presentation is asked from 36 weeks.')}>
+        <Field label="DJJ" unit="dpm" value={values.djjBpm} onChange={set('djjBpm')} numeric />
+        {gw >= 36 && (
+          <Select label={t('Presentasi', 'Presentation')} value={values.presentation} onChange={set('presentation')}
+            options={['', 'kepala', 'sungsang', 'lintang']} />
+        )}
+      </Section>
+
+      <Section title={t('T6–T7 · Imunisasi TT & Tablet Tambah Darah', 'T6–T7 · TT Immunisation & Iron Tablets')}
+        note={t('T6 skrining status imunisasi tetanus. T7 berikan tablet tambah darah dan catat jumlahnya.',
+                'T6 reviews her tetanus immunisation status. T7 is the iron supplementation you give her, and how many tablets.')}>
         <Row>
           <Select label={t('Status TT', 'TT status')} value={values.ttStatus} onChange={set('ttStatus')}
             options={['', 'T1', 'T2', 'T3', 'T4', 'T5', 'lengkap']} />
@@ -428,7 +479,9 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         </Row>
       </Section>
 
-      <Section title={t('T6 · Laboratorium', 'T6 · Laboratory')}>
+      <Section title={t('T8 · Pemeriksaan Laboratorium', 'T8 · Laboratory Screening')}
+        note={t('Hb dan protein urine setiap kunjungan. Skrining lengkap (HIV, sifilis, HBsAg, golongan darah, gula darah, malaria) pada K1.',
+                'Haemoglobin and urine protein at every visit. The full screen (HIV, syphilis, HBsAg, blood group, blood sugar, malaria) at K1.')}>
         <Row>
           <Field label="Hb" unit="g/dL" value={values.labHb} onChange={set('labHb')} numeric />
           <Select label={t('Protein urine', 'Urine protein')} value={values.labProtein} onChange={set('labProtein')}
@@ -476,26 +529,15 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
         )}
       </Section>
 
-      <Section title={t('T7 · Temu Wicara', 'T7 · Counselling')}>
-        <Field label={t('Topik konseling', 'Counselling topics')} value={values.counselling} onChange={set('counselling')}
-          placeholder={t('tanda bahaya, gizi, KB', 'danger signs, nutrition, FP')} />
-      </Section>
-
-      {/* T8 only exists from 36 weeks. Hiding it earlier is not cosmetic: the
-          scorer does not expect it, so showing an empty field would imply a gap
-          that is not one. */}
-      {gw >= 36 && (
-        <Section title={t('T8 · Presentasi Janin', 'T8 · Fetal Presentation')}>
-          <Select label={t('Presentasi', 'Presentation')} value={values.presentation} onChange={set('presentation')}
-            options={['', 'kepala', 'sungsang', 'lintang']} />
-        </Section>
-      )}
-
       {/* The plan sits immediately above the two fields it fills, so the
-          relationship is visible: tick a line, watch it appear below. */}
+          relationship is visible: tick a line, watch it appear below. Both of
+          those fields are in the T9 section below, which is why the panel did
+          not move when the sections were reordered. */}
       <PlanPanel items={planItems} state={plan} onChange={setPlan} />
 
-      <Section title={t('T9–T10 · Tatalaksana & Tindak Lanjut', 'T9–T10 · Management & Follow-up')}>
+      <Section title={t('T9 · Tata Laksana Kasus', 'T9 · Manage What You Found')}
+        note={t('Catat tindakan yang diberikan untuk temuan hari ini. Tindak lanjut dan keluhan dicatat di sini juga, tetapi keduanya bukan bagian dari 10T.',
+                'Record the care you gave for what you found today. Follow-up and complaints are recorded here too, but neither is one of the ten.')}>
         <Field label={t('Tatalaksana', 'Management')} value={values.caseManagement} onChange={set('caseManagement')}
           placeholder={t('tindakan yang diberikan', 'care given')} />
         {/* What the accepted lines will add, shown as a preview rather than
@@ -505,14 +547,28 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
           <Hint>{t('+ dari rencana: ', '+ from the plan: ')}
             {composed.caseManagement.slice(values.caseManagement.trim().length).replace(/^;\s*/, '')}</Hint>
         )}
-        <Field label={t('Tindak lanjut', 'Follow-up')} value={values.followupPlan} onChange={set('followupPlan')}
+        {/* ── NOT ONE OF THE TEN, AND IT USED TO COST HER A MARK ──────────
+            This was scored as the engine's `t10` until 20 Oct 2026, so a visit
+            lost a tenth of its completeness for omitting something the standard
+            never asked for. The engine calls it followupPlan now and does not
+            score it. Saying so on screen stops the question being asked again. */}
+        <Field label={t('Tindak lanjut (di luar 10T)', 'Follow-up (not one of the ten)')}
+          value={values.followupPlan} onChange={set('followupPlan')}
           placeholder={t('kontrol 4 minggu', 'review in 4 weeks')} />
         {composed.followupPlan !== values.followupPlan && (
           <Hint>{t('+ dari rencana: ', '+ from the plan: ')}
             {composed.followupPlan.slice(values.followupPlan.trim().length).replace(/^;\s*/, '')}</Hint>
         )}
-        <Field label={t('Keluhan', 'Complaints')} value={values.complaints} onChange={set('complaints')}
+        <Field label={t('Keluhan (di luar 10T)', 'Complaints (not one of the ten)')}
+          value={values.complaints} onChange={set('complaints')}
           placeholder={t('jika ada', 'if any')} />
+      </Section>
+
+      <Section title={t('T10 · Temu Wicara (Konseling)', 'T10 · Counselling')}
+        note={t('Temu wicara: apa yang Anda bicarakan dengan ibu hari ini — tanda bahaya, gizi, persiapan persalinan, KB.',
+                'What you talked about with her today — danger signs, nutrition, preparing for the birth, family planning.')}>
+        <Field label={t('Topik konseling', 'Counselling topics')} value={values.counselling} onChange={set('counselling')}
+          placeholder={t('tanda bahaya, gizi, KB', 'danger signs, nutrition, FP')} />
       </Section>
 
       {/* P4K — the birth plan. Shown from 28 weeks, because before that the
