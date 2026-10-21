@@ -97,34 +97,45 @@ export function followUpQuestion(
  * What the server should write for an answer.
  *
  * RETURNS NULL FOR 'unknown', and that is the point. An unanswered referral
- * must stay open: writing outcome='unknown' would close it, remove it from the
- * next visit's question, and leave a permanent "we asked and nobody knew" where
- * the truth is "ask again in two weeks".
+ * must stay open: marking it answered would remove it from the next visit's
+ * question and leave a permanent "we asked and nobody knew" where the truth is
+ * "ask again in two weeks".
  *
- * arrival_confirmed IS A BOOLEAN AND CANNOT HOLD THE THIRD STATE. It is NOT
- * NULL with a default of false, so false has always meant "nobody answered" —
- * 144 of 148 rows in production. `outcome` is what distinguishes an answer from
- * a default, which is why it is set on both of the answers that close.
+ * THREE COLUMNS, THREE JOBS, and working this out from the live data changed
+ * the design. arrival_answered_at says WHETHER somebody answered —
+ * arrival_confirmed is NOT NULL and defaults to false, so 144 of 148 rows carry
+ * false with nobody having been asked, and the boolean cannot hold a third
+ * state. arrival_confirmed says WHAT they answered. And `outcome` is left
+ * alone as what it has always been: clinical prose from the receiving facility,
+ * "MgSO4 administered, stabilised" on the four answered rows. A status token
+ * written there would overload a column clinicians read.
+ *
+ * SO HER NOTE GOES WHERE A READER EXPECTS IT. On arrival that is `outcome`,
+ * because what the hospital found IS the outcome. On non-arrival there is no
+ * facility outcome at all, so the reason is a note.
  */
 export function arrivalPatch(
   answer: ArrivalAnswer,
   opts: { at?: string | Date | null; referredAt?: string | Date | null; note?: string | null } = {},
 ): {
+  arrival_answered_at: string;
   arrival_confirmed: boolean;
   arrival_time: string | null;
   time_to_arrival_hours: number | null;
-  outcome: string;
-  outcome_notes: string | null;
+  outcome?: string;
+  outcome_notes?: string | null;
 } | null {
   if (answer === 'unknown') return null;
 
   const note = String(opts.note ?? '').trim() || null;
+  const answeredAt = new Date().toISOString();
+
   if (answer === 'did_not_go') {
     return {
+      arrival_answered_at: answeredAt,
       arrival_confirmed: false,
       arrival_time: null,
       time_to_arrival_hours: null,
-      outcome: 'did_not_attend',
       outcome_notes: note,
     };
   }
@@ -140,11 +151,13 @@ export function arrivalPatch(
     : null;
 
   return {
+    arrival_answered_at: answeredAt,
     arrival_confirmed: true,
     arrival_time: atIso,
     time_to_arrival_hours: hours,
-    outcome: 'attended',
-    outcome_notes: note,
+    /* Omitted when she wrote nothing, so an empty note cannot blank a prose
+       outcome that a clinic had already recorded. */
+    ...(note ? { outcome: note } : {}),
   };
 }
 

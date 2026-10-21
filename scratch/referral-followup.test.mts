@@ -45,27 +45,39 @@ ok('…which is what keeps it open for the next visit', arrivalPatch('unknown') 
 const went = arrivalPatch('arrived', {
   at: new Date(Date.UTC(2026, 9, 14, 15, 0)),
   referredAt: new Date(Date.UTC(2026, 9, 14, 9, 0)),
+  note: 'MgSO4 diberikan, stabil',
 })!
 ok('arrived sets the boolean', went.arrival_confirmed === true)
-ok('…and an outcome, which is what distinguishes an answer from the default',
-  went.outcome === 'attended')
+/* THE MARKER IS ITS OWN COLUMN. arrival_confirmed is NOT NULL and defaults to
+   false — 144 of 148 production rows carry false with nobody having answered —
+   so the boolean cannot say whether anyone was asked. */
+ok('…and stamps WHEN somebody answered, which the boolean cannot say',
+  typeof went.arrival_answered_at === 'string' && went.arrival_answered_at.length > 10)
 ok('…and the hours between, 9am to 3pm is 6', went.time_to_arrival_hours === 6)
-const noRef = arrivalPatch('arrived', { at: new Date(Date.UTC(2026, 9, 14, 15, 0)) })!
+/* HER NOTE GOES TO `outcome` ON ARRIVAL, because what the hospital found IS the
+   outcome — that is what the four pre-existing rows hold. */
+ok('her note lands in outcome, where a clinician reads it',
+  went.outcome === 'MgSO4 diberikan, stabil')
+ok('…and NOT in outcome_notes', went.outcome_notes === undefined)
+/* AN EMPTY NOTE MUST NOT BLANK A PROSE OUTCOME the clinic already recorded. */
+const quiet = arrivalPatch('arrived', { at: new Date(Date.UTC(2026, 9, 14, 15, 0)) })!
+ok('no note means outcome is left untouched, not set to empty',
+  !('outcome' in quiet))
 ok('hours are NOT invented when the referral time is unknown',
-  noRef.time_to_arrival_hours === null)
-ok('…but the arrival time is still recorded', !!noRef.arrival_time)
+  quiet.time_to_arrival_hours === null)
+ok('…but the arrival time is still recorded', !!quiet.arrival_time)
 
 /* ── she did not go ───────────────────────────────────────────────────── */
 const no = arrivalPatch('did_not_go', { note: 'Keluarga menolak' })!
 ok('did-not-go leaves the boolean false', no.arrival_confirmed === false)
-ok('…and says so in the outcome, not by the default', no.outcome === 'did_not_attend')
+ok('…and is told apart from the default ONLY by the marker',
+  no.arrival_confirmed === false && typeof no.arrival_answered_at === 'string')
 ok('…records no arrival time', no.arrival_time === null && no.time_to_arrival_hours === null)
-ok('…and keeps her note', no.outcome_notes === 'Keluarga menolak')
-/* THE WHOLE POINT. arrival_confirmed=false is the column DEFAULT — 144 of 148
-   rows in production carry it with nobody ever having answered. So false alone
-   cannot mean "did not attend", and only `outcome` separates the two. */
-ok('a did-not-go and an unanswered referral differ ONLY by outcome',
-  no.arrival_confirmed === false && no.outcome.length > 0)
+/* ON NON-ARRIVAL THERE IS NO FACILITY OUTCOME AT ALL, so the reason is a note
+   and `outcome` is never written. */
+ok('the reason lands in outcome_notes', no.outcome_notes === 'Keluarga menolak')
+ok('…and outcome is never touched, because nothing happened at a facility',
+  !('outcome' in no))
 ok('an empty note is null, not an empty string',
   arrivalPatch('did_not_go', { note: '   ' })!.outcome_notes === null)
 
