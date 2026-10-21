@@ -128,6 +128,41 @@ export function toEngineInputs(v: AncFormValues, motherAge: number | null) {
   return { visit, clinical, bmi };
 }
 
+/**
+ * A stored place-of-birth value as the engine's code.
+ *
+ * WHY THIS IS NOT JUST A CAST. The Select used to store its own labels, so a
+ * plan saved before that was fixed holds 'Rumah' or 'Rumah sakit' rather than
+ * 'rumah' or 'rs'. Carried forward unchanged into the corrected Select, such a
+ * value matches no option and the field silently shows blank -- a birth plan
+ * the midwife completed last month reading as unarranged.
+ *
+ * ORDER MATTERS HERE. 'rumah sakit' CONTAINS 'rumah', so the hospital label has
+ * to be tested FIRST or every hospital plan becomes a home birth -- which is
+ * also the exact bug the engine's own rule had with the old labels.
+ *
+ * An unrecognised value is returned UNCHANGED rather than blanked: it will not
+ * match an option, which is visible, and blanking it would destroy what she
+ * recorded. Never dropped.
+ */
+export function placeCode(stored: string | null | undefined): string {
+  const raw = String(stored ?? '').trim()
+  if (!raw) return ''
+  const s = raw.toLowerCase()
+  const CODES = ['rs', 'puskesmas', 'poskesdes', 'polindes', 'klinik', 'pmb', 'rumah', 'perjalanan', 'lainnya']
+  if (CODES.includes(s)) return s
+  // Hospital before home, for the reason above.
+  if (s.includes('rumah sakit') || s === 'rsud' || s === 'rsia') return 'rs'
+  if (s.includes('puskesmas')) return 'puskesmas'
+  if (s.includes('poskesdes')) return 'poskesdes'
+  if (s.includes('polindes')) return 'polindes'
+  if (s.includes('bidan')) return 'pmb'
+  if (s.includes('klinik')) return 'klinik'
+  if (s.includes('rumah')) return 'rumah'
+  if (s.includes('perjalanan')) return 'perjalanan'
+  return raw
+}
+
 /** P4K, or null when nothing has been arranged yet. */
 export function birthPlanOf(v: AncFormValues) {
   const plan = {
@@ -464,8 +499,23 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
           transport arranged at 36 weeks is the one who dies on the way. */}
       {gw >= 28 && (
         <Section title={t('P4K · Rencana Persalinan', 'P4K · Birth Plan')}>
+          {/* THE VALUE IS THE ENGINE'S CODE, NOT THE LABEL ON SCREEN.
+              generateClinicalFlags tests `birthPlan.fasilitas.includes('rumah')`
+              to warn when a home birth is planned on a high-risk pregnancy.
+              These options used to STORE their own labels, so the stored value
+              was 'Rumah' with a capital R -- and 'Rumah'.includes('rumah') is
+              false. The warning could never fire for anybody.
+              Lowercasing the labels would have been worse, not better:
+              'rumah sakit' CONTAINS 'rumah', so every hospital birth would have
+              raised a home-birth warning instead.
+              So the values are BirthPlace from @sahaibat/anc-engine -- the same
+              codes sahai_deliveries stores for where a birth actually happened,
+              which also makes planned and actual comparable. */}
           <Select label={t('Tempat bersalin', 'Place of birth')} value={values.p4kFasilitas} onChange={set('p4kFasilitas')}
-            options={['', 'Puskesmas', 'Rumah sakit', 'Poskesdes', 'Klinik', 'Bidan praktik', 'Rumah']} />
+            options={[['', '—'], ['puskesmas', 'Puskesmas'], ['rs', t('Rumah sakit', 'Hospital')],
+                      ['poskesdes', 'Poskesdes'], ['polindes', 'Polindes'], ['klinik', t('Klinik', 'Clinic')],
+                      ['pmb', t('Bidan praktik mandiri', 'Private midwife practice')],
+                      ['rumah', t('Rumah', 'Home')], ['lainnya', t('Lainnya', 'Other')]]} />
           <Select label={t('Transportasi', 'Transport')} value={values.p4kTransportasi} onChange={set('p4kTransportasi')}
             options={['', 'Ambulans', 'Mobil', 'Motor', 'Ojek', 'Angkot', 'Lainnya']} />
           <Select label={t('Pembiayaan', 'Funding')} value={values.p4kPendanaan} onChange={set('p4kPendanaan')}

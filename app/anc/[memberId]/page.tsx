@@ -8,7 +8,7 @@ import { getRegisterRecord, type RegisterRecord } from '@/lib/offlineStore';
 import { saveAncVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
 import type { PlanState } from '@/components/PlanPanel';
-import AncForm, { EMPTY_FORM, toEngineInputs, type AncFormValues } from '@/components/AncForm';
+import AncForm, { EMPTY_FORM, toEngineInputs, placeCode, type AncFormValues } from '@/components/AncForm';
 import { buildReferralLetter } from '@/lib/referralLetter';
 import ReferralPanel from '@/components/ReferralPanel';
 import { generateClinicalFlags, shouldRefer } from '@sahaibat/anc-engine';
@@ -69,7 +69,10 @@ export default function AncVisitPage() {
            wrong items. A suggestion only -- the field stays editable, and a
            record that cannot support a guess keeps the old default. */
         visitType: suggestedContact(r) ?? v.visitType,
-        p4kFasilitas: bp?.fasilitas ?? '',
+        /* Through placeCode: a plan saved before the Select stored codes holds
+           a LABEL, and carrying it forward unchanged would show blank -- a
+           completed birth plan reading as unarranged. */
+        p4kFasilitas: placeCode(bp?.fasilitas),
         p4kTransportasi: bp?.transportasi ?? '',
         p4kDonorDarah: bp?.donorDarah ?? '',
         p4kPendanaan: bp?.pendanaan ?? '',
