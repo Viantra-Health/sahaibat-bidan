@@ -17,6 +17,7 @@
 
 import { useState, useMemo } from 'react';
 import { score10T, generateClinicalFlags, shouldRefer, calculateBMI } from '@sahaibat/anc-engine';
+import type { AncVisitData } from '@sahaibat/anc-engine';
 import SkipReasons, { type SkipReasonMap } from './SkipReasons';
 import PlanPanel, { EMPTY_PLAN, lineText, type PlanState } from './PlanPanel';
 import { suggestCarePlan, planToFields, type PlanItem } from '@sahaibat/anc-engine';
@@ -77,21 +78,41 @@ export function toEngineInputs(v: AncFormValues, motherAge: number | null) {
   const gw = num(v.gestationalWeeks) ?? 0;
   const bmi = calculateBMI(num(v.weightKg), num(v.heightCm));
 
-  const visit = {
+  /* THE STANDARD'S NUMBERING, as of 20 Oct 2026. These keys used to run t1..t10
+     in the engine's own sequence and six of them named the wrong activity, so a
+     dashboard printing "T3" meant fundal height where the standard means nilai
+     status gizi. See the header of score10T.ts in @sahaibat/anc-engine.
+
+     TYPED, not cast. This object reached score10T through `as any`, which is
+     why TypeScript had nothing to say when the engine was renumbered — six
+     fields would have gone silently undefined and every visit would have
+     scored as missing fundal height, tetanus, Fe, lab, counselling and
+     presentation. The annotation is what makes the next rename a compile error
+     instead of a quiet collapse in the score. */
+  const visit: AncVisitData = {
     gestationalWeeks: gw,
     t1WeightKg: num(v.weightKg),
     t2BpSystolic: num(v.bpSystolic),
     t2BpDiastolic: num(v.bpDiastolic),
-    t3FundalHeightCm: num(v.fundalHeightCm),
-    t4TtStatus: v.ttStatus || null,
-    t5FeTablets: num(v.feTablets),
-    t6LabHb: num(v.labHb),
-    t6LabProtein: v.labProtein || null,
-    t6LabOther: null,
-    t7CounsellingTopics: v.counselling ? v.counselling.split(',').map(s => s.trim()).filter(Boolean) : null,
-    t8Presentation: v.presentation || null,
+    // T3 — nilai status gizi. NEW to the score, and the measurement was already
+    // on this form; only the scoring was blind to it.
+    t3LilaCm: num(v.lilaCm),
+    t4FundalHeightCm: num(v.fundalHeightCm),
+    t5Presentation: v.presentation || null,
+    t5DjjBpm: num(v.djjBpm),
+    t6TtStatus: v.ttStatus || null,
+    t7FeTablets: num(v.feTablets),
+    t8LabHb: num(v.labHb),
+    t8LabProtein: v.labProtein || null,
+    t8LabOther: null,
     t9CaseManagement: v.caseManagement || null,
-    t10FollowupPlan: v.followupPlan || null,
+    t10CounsellingTopics: v.counselling ? v.counselling.split(',').map(s => s.trim()).filter(Boolean) : null,
+    // Not one of the ten and no longer scored. Still recorded.
+    followupPlan: v.followupPlan || null,
+    /* Whether T3 is EXPECTED. The form knows which contact this is, and the
+       standard assesses nutritional status at the first one — expecting LILA
+       again at K4 would mark down a clinic doing exactly the right thing. */
+    isFirstContact: String(v.visitType ?? '').toUpperCase() === 'K1',
   };
 
   const clinical = {
@@ -294,7 +315,7 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
   // Accepting a management plan genuinely completes T9, and scoring the raw
   // field would mark her down for using the feature.
   const quality = useMemo(
-    () => score10T(toEngineInputs({ ...values, ...composed }, motherAge).visit as any),
+    () => score10T(toEngineInputs({ ...values, ...composed }, motherAge).visit),
     [values, composed, motherAge],
   );
 

@@ -61,7 +61,10 @@ export async function saveAncVisit(args: {
   const { identity, memberId, motherName, motherAge, values, skipReasons, plan } = args;
   const { visit, clinical } = toEngineInputs(values, motherAge);
 
-  const quality = score10T(visit as any);
+  /* No cast. `visit` is typed AncVisitData at its source now, which is what
+     turns the next engine rename into a compile error rather than six fields
+     silently becoming undefined and the score collapsing. */
+  const quality = score10T(visit);
   const flags = generateClinicalFlags(clinical as any);
   const referral = shouldRefer(flags);
 
