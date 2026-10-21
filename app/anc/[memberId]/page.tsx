@@ -267,6 +267,9 @@ export default function AncVisitPage() {
         onChange={setValues}
         onSave={handleSave}
         saving={saving}
+        /* From the cached register, so the question works with no
+           signal — the state she is usually in when it matters. */
+        openReferral={record.openReferral}
       />
     </main>
   );

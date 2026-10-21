@@ -131,6 +131,23 @@ export interface RegisterRecord {
     visits: number;
   } | null;
 
+  /**
+   * A referral she made that nobody ever closed, so the next visit can ask.
+   *
+   * CARRIED WITH THE REGISTER for the same reason birthPlan and history are:
+   * she is standing in a village with no signal when the question matters. A
+   * fetch-on-tap would mean the one follow-up question that closes the national
+   * risti indicator is the only thing in this app that needs a network.
+   *
+   * Null when there is nothing outstanding, which is the normal case.
+   */
+  openReferral: {
+    id: number;
+    createdAt: string;
+    reason: string | null;
+    urgency: string | null;
+  } | null;
+
   /** Last recorded P4K, so the checklist carries forward between visits. */
   birthPlan: {
     fasilitas: string | null; transportasi: string | null; donorDarah: string | null;

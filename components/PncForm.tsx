@@ -23,8 +23,16 @@ import { useMemo } from 'react';
 import { generatePncFlags, shouldReferPnc, kfForDay } from '@sahaibat/anc-engine';
 import { C, Section, Row, Hint, Field, Select, Tri } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
+import ReferralFollowUp from './ReferralFollowUp';
+import { followUpQuestion, type OpenReferral } from '@/lib/referral-followup';
 
 export interface PncFormValues {
+  /* ── THE REFERRAL SHE MADE, ANSWERED ─────────────────────────────────────
+     Not a clinical finding of today's visit — the answer to a question about a
+     referral days old. Empty means unanswered, which keeps the referral open
+     and asks again next time. See lib/referral-followup.ts. */
+  referralAnswer: '' | 'arrived' | 'did_not_go' | 'unknown';
+  referralNote: string;
   visitType: string;
   daysPostpartum: string;
   bpSystolic: string; bpDiastolic: string;
@@ -42,6 +50,7 @@ export interface PncFormValues {
 }
 
 export const EMPTY_PNC: PncFormValues = {
+  referralAnswer: '', referralNote: '',
   visitType: 'KF1', daysPostpartum: '',
   bpSystolic: '', bpDiastolic: '', temperatureC: '',
   bleeding: '', lochiaFoul: null, woundInfected: null,
@@ -82,6 +91,13 @@ const BLEEDING_LABEL: Record<string, [string, string]> = {
 
 interface Props {
   motherName: string;
+  /**
+   * A referral she made that nobody has closed, from the cached register.
+   *
+   * Optional, so a caller that does not have one — a new mother with no
+   * history — renders no question rather than an empty panel.
+   */
+  openReferral?: OpenReferral | null;
   subtitle?: string | null;
   values: PncFormValues;
   onChange: (v: PncFormValues) => void;
@@ -89,7 +105,7 @@ interface Props {
   saving?: boolean;
 }
 
-export default function PncForm({ motherName, subtitle, values, onChange, onSave, saving }: Props) {
+export default function PncForm({ motherName, subtitle, values, onChange, onSave, saving, openReferral }: Props) {
   const { t, lang } = useLang();
   const set = <K extends keyof PncFormValues>(k: K) => (val: PncFormValues[K]) =>
     onChange({ ...values, [k]: val });
@@ -152,6 +168,19 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
           ))}
         </div>
       )}
+
+      {/* ── THE REFERRAL SHE MADE, BEFORE TODAY'S FIELDS ──────────────────
+          Above the form because it is context for this visit rather than a
+          finding of it, and because a question buried under thirty inputs is a
+          question answered by whoever scrolls. Renders nothing when there is no
+          open referral, which is the normal case. */}
+      <ReferralFollowUp
+        question={followUpQuestion(openReferral, new Date())}
+        answer={values.referralAnswer}
+        note={values.referralNote}
+        onAnswer={(a) => onChange({ ...values, referralAnswer: a, referralNote: a ? values.referralNote : '' })}
+        onNote={(n) => onChange({ ...values, referralNote: n })}
+      />
 
       <Section title={t('Kunjungan nifas', 'Postnatal visit')}>
         <Row>

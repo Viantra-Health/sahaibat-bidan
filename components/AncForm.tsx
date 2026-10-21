@@ -23,10 +23,18 @@ import PlanPanel, { EMPTY_PLAN, lineText, type PlanState } from './PlanPanel';
 import { suggestCarePlan, planToFields, type PlanItem } from '@sahaibat/anc-engine';
 import { C, ghostBtn, Section, Row, Hint, Field, Select, Tri } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
+import ReferralFollowUp from './ReferralFollowUp';
+import { followUpQuestion, type OpenReferral } from '@/lib/referral-followup';
 import { checkAnc } from '@/lib/plausibility';
 import ConfirmWarnings from '@/components/ConfirmWarnings';
 
 export interface AncFormValues {
+  /* ── THE REFERRAL SHE MADE, ANSWERED ─────────────────────────────────────
+     Not a clinical finding of today's visit — the answer to a question about a
+     referral days old. Empty means unanswered, which keeps the referral open
+     and asks again next time. See lib/referral-followup.ts. */
+  referralAnswer: '' | 'arrived' | 'did_not_go' | 'unknown';
+  referralNote: string;
   visitType: string;
   gestationalWeeks: string;
   weightKg: string; heightCm: string;
@@ -50,6 +58,7 @@ export interface AncFormValues {
 }
 
 export const EMPTY_FORM: AncFormValues = {
+  referralAnswer: '', referralNote: '',
   visitType: 'K1', gestationalWeeks: '',
   weightKg: '', heightCm: '', bpSystolic: '', bpDiastolic: '',
   fundalHeightCm: '', lilaCm: '', djjBpm: '',
@@ -225,6 +234,13 @@ const T_NAME: Record<string, [string, string]> = {
 
 interface Props {
   motherName: string;
+  /**
+   * A referral she made that nobody has closed, from the cached register.
+   *
+   * Optional, so a caller that does not have one — a new mother with no
+   * history — renders no question rather than an empty panel.
+   */
+  openReferral?: OpenReferral | null;
   motherAge: number | null;
   subtitle?: string | null;
   values: AncFormValues;
@@ -247,7 +263,7 @@ interface Props {
   saving?: boolean;
 }
 
-export default function AncForm({ motherName, motherAge, subtitle, values, onChange, onSave, saving }: Props) {
+export default function AncForm({ motherName, motherAge, subtitle, values, onChange, onSave, saving, openReferral }: Props) {
   const { t, lang } = useLang();
   const [showLabs, setShowLabs] = useState(false);
   const [askingWhy, setAskingWhy] = useState(false);
@@ -374,6 +390,19 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
           ))}
         </div>
       )}
+
+      {/* ── THE REFERRAL SHE MADE, BEFORE TODAY'S FIELDS ──────────────────
+          Above the form because it is context for this visit rather than a
+          finding of it, and because a question buried under thirty inputs is a
+          question answered by whoever scrolls. Renders nothing when there is no
+          open referral, which is the normal case. */}
+      <ReferralFollowUp
+        question={followUpQuestion(openReferral, new Date())}
+        answer={values.referralAnswer}
+        note={values.referralNote}
+        onAnswer={(a) => onChange({ ...values, referralAnswer: a, referralNote: a ? values.referralNote : '' })}
+        onNote={(n) => onChange({ ...values, referralNote: n })}
+      />
 
       <Section title={t('Kunjungan', 'Visit')}>
         <Row>
