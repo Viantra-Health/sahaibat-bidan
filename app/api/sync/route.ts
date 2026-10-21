@@ -1,9 +1,21 @@
-// app/api/sync/route.ts — proxy for uploading queued ANC/PNC visits.
+// app/api/sync/route.ts — proxy for uploading queued ANC/PNC/delivery/KN visits.
 //
-// NOTE: the target endpoint does not exist yet. /api/pwa/sync on the main app
-// handles the four Kader modules only; ANC and PNC need their own, writing to
-// sahai_anc_visits / sahai_pnc_visits through the same clinical engine the
-// WhatsApp path uses. That is the next server-side piece.
+// THE TARGET EXISTS AND IS LIVE. This note used to say it did not, and that it
+// was "the next server-side piece" — written when /api/pwa/sync handled the
+// four Kader modules only. /api/pwa/bidan-sync has since been built on the main
+// app and writes sahai_anc_visits, sahai_pnc_visits, sahai_kn_visits,
+// sahai_deliveries and sahai_birth_outcomes through the same @sahaibat/anc-engine
+// the WhatsApp path uses. It also creates a sahai_family_members row for each
+// liveborn baby and fills sahai_birth_outcomes.member_id.
+//
+// Measured on production 20 Oct 2026: 213 antenatal visits and 13 deliveries
+// have arrived through it. Leaving the old note in place would tell the next
+// reader the sync is unbuilt while a thousand rows say otherwise — which is
+// worse than no comment, because it is specific and wrong.
+//
+// WHAT IS STILL A PROXY AND WHY. This route holds PWA_SYNC_SECRET so the device
+// never does: the queue posts here with a session and this adds the shared
+// secret server-side.
 import { NextRequest, NextResponse } from 'next/server';
 
 const MAIN_APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL ?? 'https://app.sahaibat.com';
