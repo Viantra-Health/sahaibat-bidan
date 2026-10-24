@@ -33,7 +33,8 @@
 import { useMemo } from 'react';
 import {
   KB_METHODS, kbMethod, dueFor, nextStep, counselledWithoutChoosing,
-  KB_END_REASONS, type KbMethodCode,
+  KB_END_REASONS, formulationsFor, needsFormulation, dueForFormulation,
+  type KbMethodCode, type KbFormulationCode,
 } from '@sahaibat/anc-engine';
 import { C, Section, Field, Select, Tri, Hint } from '@/components/ui';
 import { useLang } from '@/lib/lang';
@@ -46,6 +47,17 @@ export interface KbFormValues {
 
   /** Empty means counselled and chose nothing — a real outcome, not a blank. */
   methodCode: '' | KbMethodCode;
+  /**
+   * Which formulation of the method.
+   *
+   * Kemenkes publishes its eligibility lists on this axis, not on the method:
+   * separate lists for pil kombinasi and pil progestin, for AKDR Copper and
+   * AKDR-LNG. It also decides the repeat interval where DMPA and NET-EN share
+   * one method code and differ by thirty days.
+   *
+   * Empty means UNRECORDED, which is not the same as the commoner one.
+   */
+  formulationCode: '' | KbFormulationCode;
   /** Brand or packet, free text. A contraceptive catalogue is its own work. */
   product: string;
   /** Provided today: pills handed over, injection given, device placed. */
@@ -79,6 +91,7 @@ export const EMPTY_KB: KbFormValues = {
   visitDate: '',
   counselled: true,
   methodCode: '',
+  formulationCode: '',
   product: '',
   provided: false,
   quantity: '',
@@ -110,6 +123,7 @@ export function toKbFacts(v: KbFormValues) {
   return {
     counselled_at: v.counselled ? on : null,
     method_code: v.methodCode || null,
+    formulation_code: v.formulationCode || null,
     selected_at: v.methodCode ? on : null,
     provided_at: v.provided && v.methodCode ? on : null,
     device_months: num(v.deviceMonths),
@@ -147,6 +161,8 @@ export default function KbForm({
       const m = val ? kbMethod(val as string) : null;
       if (!m || !m.device) next.deviceMonths = '';
       if (!val) { next.provided = false; next.quantity = ''; next.product = ''; }
+      // A KPK left attached to an AKDR is a record that contradicts itself.
+      next.formulationCode = '';
     }
     if (k === 'ended' && val !== true) next.endReason = '';
 
@@ -161,7 +177,11 @@ export default function KbForm({
   const due = useMemo(() => {
     const facts = toKbFacts(values);
     if (!facts.provided_at) return null;
-    return dueFor({ ...facts, provided_at: facts.provided_at } as any, values.visitDate || undefined);
+    return dueForFormulation(
+      { ...facts, provided_at: facts.provided_at } as any,
+      values.formulationCode || null,
+      values.visitDate || undefined,
+    );
   }, [values]);
 
   const step = useMemo(() => nextStep(toKbFacts(values) as any), [values]);
@@ -226,6 +246,27 @@ export default function KbForm({
             ...KB_METHODS.map((m) => [m.code, t(m.label_id, m.label_en)] as [string, string]),
           ]}
         />
+
+        {method && needsFormulation(values.methodCode) && (
+          <>
+            <Select
+              label={t('Jenis / formulasi', 'Formulation')}
+              value={values.formulationCode}
+              onChange={(v) => set('formulationCode')(v as any)}
+              options={[
+                ['', t('— belum dicatat —', '— not recorded —')],
+                ...formulationsFor(values.methodCode).map(
+                  (f) => [f.code, t(f.label_id, f.label_en)] as [string, string]),
+              ]}
+            />
+            {!values.formulationCode && (
+              <Hint warn>
+                {t('Jenisnya menentukan jadwal suntik/kontrol berikutnya dan penapisan kelayakan. Isi kalau tahu.',
+                   'The formulation decides the next dose date and the eligibility screening. Fill it in if you know it.')}
+              </Hint>
+            )}
+          </>
+        )}
 
         {method && (
           <>
