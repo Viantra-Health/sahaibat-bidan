@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
-    "@sahaibat/anc-engine": "github:Viantra-Health/sahaibat-anc-engine#d4dd3e4fe17b23bc8de6ebef05080cac59497dc2",
+    "@sahaibat/anc-engine": "github:Viantra-Health/sahaibat-anc-engine#463be798f5b11c02552d68a213e6538d882f7d7e",
     "@sahaibat/identity": "github:Viantra-Health/sahaibat-identity",
     "next": "14.2.3",
     "react": "^18",

@@ -20,7 +20,10 @@ const REGISTER = 'register';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type VisitFlow = 'anc' | 'pnc' | 'delivery' | 'kn';
+/* 'kb' joined these when family planning was found to exist nowhere on the
+   field side at all -- no table, no route, no field but a single boolean on
+   the postnatal visit saying a conversation had happened. */
+export type VisitFlow = 'anc' | 'pnc' | 'delivery' | 'kn' | 'kb';
 
 export interface QueuedVisit {
   localId: string;

@@ -45,7 +45,7 @@ export default function SearchPage() {
     syncRegister(id.profileId).then(async (r) => {
       if (r.source === 'server') setRegister(await getRegister());
       if (r.reason) setStatus(r.reason);
-      else if (r.count === 0) setStatus(t('Daftar warga kosong untuk desa Anda.', 'The register is empty for your village.'));
+      else if (r.count === 0) setStatus(t('Daftar pasien kosong untuk wilayah Anda.', 'The register is empty for your area.'));
     });
 
     // Referral targets, cached before the first referral rather than during
@@ -120,7 +120,7 @@ export default function SearchPage() {
             : flow === 'persalinan' ? t('Mendekati Persalinan', 'Near term')
             : flow === 'nifas' ? t('Ibu Nifas', 'Postnatal mothers')
             : flow === 'kn' ? t('Bayi Baru Lahir', 'Newborns')
-            : t('Warga Desa', 'Village register')}
+            : t('Daftar Pasien', 'Patient register')}
         </h1>
         <div style={{ fontSize: 12.5, color: C.dim }}>
           {/* It read "N tersimpan di perangkat" using the SEARCH total, so
@@ -155,7 +155,7 @@ export default function SearchPage() {
           of a search has to cost one thumb press. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 18 }}>
         <Chip on={onlyHome} onClick={() => setOnlyHome((v) => !v)}
-          label={identity.village ? `${t('Desa', 'Village')} ${identity.village}` : t('Desa saya', 'My village')} />
+          label={identity.village ? `${t('Wilayah', 'Area')} ${identity.village}` : t('Wilayah saya', 'My area')} />
         {/* Tapping the active one clears it, so there is always a way back to
             the whole register without hunting for an "all" chip. */}
         {(['anc', 'persalinan', 'nifas', 'kn'] as const).map((f) => (
@@ -339,6 +339,32 @@ export default function SearchPage() {
                 <span style={{ fontSize: 15, lineHeight: 1 }}>→</span>
                 {second.label}
               </button>
+              {/* ── FAMILY PLANNING ──────────────────────────────────────────
+                  A third action, narrow, and only on a woman it can apply to.
+                  In Indonesian bidan practice the midwife provides family
+                  planning herself -- the roles are not divided with the doctor
+                  -- and until now she had nowhere to record it: no table, no
+                  route, no field but one boolean on the postnatal visit saying
+                  a conversation had happened.
+
+                  Not on a newborn, and not on a pregnant woman: for her the
+                  question is the delivery, and KBPP opens after it. Her row
+                  gets it the moment she has delivered. */}
+              {!isNewborn && !record.isPregnant && (
+                <button
+                  onClick={() => router.push(`/kb/${record.memberId}`)}
+                  aria-label={`${t('Keluarga Berencana', 'Family planning')} — ${record.name}`}
+                  style={{
+                    width: 52, border: 'none', background: C.card2,
+                    borderLeft: `1px solid ${C.border}`, color: C.dim,
+                    fontSize: 11.5, fontWeight: 700, cursor: 'pointer', letterSpacing: '.04em',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '10px 6px',
+                  }}
+                >
+                  KB
+                </button>
+              )}
               </div>
             );
           })}
@@ -370,6 +396,19 @@ export default function SearchPage() {
           >
             {t('Bukan salah satu di atas → Daftarkan baru', 'None of these → Register new')}
           </button>
+
+          {/* Register new above means a MOTHER. A midwife searching for a baby
+              who is not there would otherwise be handed an antenatal form. */}
+          <button
+            onClick={() => router.push('/kn/baru')}
+            style={{
+              width: '100%', padding: 12, borderRadius: 11, marginTop: 8,
+              background: 'transparent', color: C.dim, fontWeight: 600, fontSize: 13,
+              border: `1px solid ${C.border}`, cursor: 'pointer',
+            }}
+          >
+            {t('Yang dicari bayi baru lahir →', 'Looking for a newborn →')}
+          </button>
         </>
       )}
 
@@ -393,11 +432,28 @@ export default function SearchPage() {
             {t('Kunjungan nifas — ibu baru', 'Postnatal visit — new mother')}
           </button>
 
+          {/* THE NEWBORN PATH, which did not exist.
+              Both buttons above register a MOTHER. A baby only ever entered
+              the register through a delivery recorded in this app, so a baby
+              born at home or at a puskesmas — most of them — had no route in
+              at all: her KN visit saved against nobody. KN1 is due inside 48
+              hours, so this cannot wait for a Posyandu months later. */}
+          <button
+            onClick={() => router.push('/kn/baru')}
+            style={{
+              width: '100%', padding: 13, borderRadius: 11, marginTop: 8,
+              background: 'transparent', color: C.dim, fontWeight: 600, fontSize: 13.5,
+              border: `1px solid ${C.border}`, cursor: 'pointer',
+            }}
+          >
+            {t('Kunjungan neonatal — bayi baru', 'Newborn visit — new baby')}
+          </button>
+
           <p style={{ fontSize: 12.5, color: C.dimmer, lineHeight: 1.6, marginTop: 16 }}>
             {register.length > 0
-              ? t(`Ketik nama untuk mencari di antara ${register.length} warga desa ini.`,
-                    `Type a name to search among ${register.length} people in this village.`)
-              : t('Belum ada data warga di perangkat ini. Daftarkan ibu baru untuk mulai.',
+              ? t(`Ketik nama untuk mencari di antara ${register.length} pasien di wilayah ini.`,
+                    `Type a name to search among ${register.length} patients in this area.`)
+              : t('Belum ada data pasien di perangkat ini. Daftarkan ibu baru untuk mulai.',
                     'No people stored on this device yet. Register a new mother to begin.')}
           </p>
         </div>

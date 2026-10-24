@@ -178,7 +178,7 @@ export default function AppHeader({
                     cannot be true. Retrying does nothing while the refusal
                     stands and everything once the cause is fixed, so the two
                     screens now say that same sentence. */}
-                {t(`${queued.rejected} kunjungan DITOLAK server dan belum masuk catatan. Kunjungan itu tidak akan terkirim sendiri: di halaman daftar warga ada tombol "Coba kirim lagi", dan kalau masih ditolak kunjungan itu harus dicatat ulang. Hubungi koordinator Anda.`,
+                {t(`${queued.rejected} kunjungan DITOLAK server dan belum masuk catatan. Kunjungan itu tidak akan terkirim sendiri: di halaman daftar pasien ada tombol "Coba kirim lagi", dan kalau masih ditolak kunjungan itu harus dicatat ulang. Hubungi koordinator Anda.`,
                    `${queued.rejected} visit(s) were REFUSED by the server and are not in the record. They will not go on their own: the register page has a "Try sending again" button, and if they are still refused they have to be recorded again. Contact your coordinator.`)}
               </p>
             )}

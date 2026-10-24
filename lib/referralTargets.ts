@@ -75,8 +75,8 @@ export async function refreshTargets(profileId: string): Promise<Cached | null> 
  */
 export function explainEmpty(notes: string[], t: (id: string, en: string) => string = (id) => id): string {
   if (notes.includes('no_region')) {
-    return t('Posyandu Anda belum terhubung ke desa, jadi rujukan otomatis belum tersedia.',
-             'Your Posyandu is not linked to a village yet, so automatic referral targets are unavailable.');
+    return t('Tempat praktik Anda belum terhubung ke wilayah, jadi rujukan otomatis belum tersedia.',
+             'Your practice is not linked to an area yet, so automatic referral targets are unavailable.');
   }
   // startsWith, not equality: the server now appends the reason to these notes
   // so a failure can be diagnosed from a screenshot, and an exact match would

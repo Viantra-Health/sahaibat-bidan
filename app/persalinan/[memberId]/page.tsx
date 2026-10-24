@@ -135,8 +135,8 @@ export default function DeliveryPage() {
         </p>
         {saved.babies > 0 && (
           <p style={{ color: C.ok, fontSize: 14, lineHeight: 1.6 }}>
-            {t(`${saved.babies} bayi akan terdaftar dan muncul di daftar Kader desa ini.`,
-               `${saved.babies} baby/babies will be registered and appear in this village's Kader list.`)}
+            {t(`${saved.babies} bayi akan terdaftar dan muncul di daftar pasien wilayah ini.`,
+               `${saved.babies} baby/babies will be registered and appear in this area's patient list.`)}
           </p>
         )}
         {/* Said plainly, because the alternative is she looks for a baby that

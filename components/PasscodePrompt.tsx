@@ -61,8 +61,8 @@ export default function PasscodePrompt() {
       {!open ? (
         <>
           <div style={{ fontSize: 13.5, lineHeight: 1.55, marginBottom: 10 }}>
-            {t('Kunci aplikasi dengan PIN? Daftar ibu hamil di desa ini tersimpan di perangkat.',
-                'Lock the app with a PIN? The list of pregnant women in this village is stored on the device.')}
+            {t('Kunci aplikasi dengan PIN? Daftar ibu hamil di wilayah ini tersimpan di perangkat.',
+                'Lock the app with a PIN? The list of pregnant women in this area is stored on the device.')}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => setOpen(true)} style={{ ...pill, borderColor: C.teal, color: C.teal }}>

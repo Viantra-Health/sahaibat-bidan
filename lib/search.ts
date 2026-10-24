@@ -167,9 +167,9 @@ export function searchRegister(
     //    standing in her own village, and so is the woman in front of her.
     if (filters.homeRegionId != null && r.regionId === filters.homeRegionId) {
       score += 0.30;
-      why.push(t('Desa Anda', 'Your village'));
+      why.push(t('Wilayah Anda', 'Your area'));
     } else if (r.village) {
-      why.push(t(`Luar desa — ${r.village}`, `Outside village — ${r.village}`));
+      why.push(t(`Luar wilayah — ${r.village}`, `Outside your area — ${r.village}`));
     }
 
     // ── Recency. Someone seen last month is likelier than someone seen once

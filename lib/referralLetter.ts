@@ -72,7 +72,7 @@ export function buildReferralLetter(input: ReferralLetterInput): string {
   if (input.ageDays != null) L.push(`Umur         : ${input.ageDays} hari`);
   else if (input.ageYears != null) L.push(`Umur         : ${input.ageYears} tahun`);
   if (input.motherName) L.push(`Nama ibu     : ${input.motherName}`);
-  if (input.village) L.push(`Desa         : ${input.village}`);
+  if (input.village) L.push(`Wilayah      : ${input.village}`);
   const KIND_LABEL = {
     anc: 'Antenatal (ANC)', pnc: 'Nifas (PNC)', kn: 'Neonatal (KN)',
   } as const;

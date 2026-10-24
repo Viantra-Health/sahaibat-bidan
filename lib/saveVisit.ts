@@ -18,6 +18,7 @@ import { toEngineInputs, type AncFormValues } from '../components/AncForm';
 import { toPncInput, type PncFormValues } from '../components/PncForm';
 import { toDeliveryInput, type DeliveryFormValues } from '../components/DeliveryForm';
 import { toKnInput, toGrams, type KnFormValues } from '../components/KnForm';
+import { toKbFacts, type KbFormValues } from '../components/KbForm';
 import type { BidanIdentity } from './auth';
 import { todayLocal } from './plausibility';
 
@@ -212,6 +213,21 @@ export async function saveKnVisit(args: {
   babyName: string;
   motherName: string;
   values: KnFormValues;
+  /**
+   * Register this baby as a person on sync, because she was born elsewhere and
+   * is not in the register yet.
+   *
+   * Only `kn/baru` sets this. It is a DELIBERATE act, which is why it is a
+   * flag and not inferred from `memberId` being null: a null member id is
+   * usually a dropped pick or a bug, and the server records those unattached
+   * rather than minting a child out of one. See mintNewbornForKn in
+   * bidan-sync.
+   *
+   * Her sex travels here rather than in KnFormValues because it is a fact
+   * about the person, not a finding of this examination, and the KN form does
+   * not ask for it on a baby the register already knows.
+   */
+  registerNewborn?: { sex: 'L' | 'P' | null };
 }): Promise<QueuedVisit> {
   const { identity, memberId, motherMemberId, babyName, motherName, values } = args;
   const input = toKnInput(values);
@@ -236,6 +252,11 @@ export async function saveKnVisit(args: {
       ...input,
       babyName,
       motherMemberId: motherMemberId ?? null,
+      /* Read by the KN branch of bidan-sync. Absent on every ordinary visit,
+         so that path is untouched. */
+      ...(args.registerNewborn
+        ? { registerNewborn: true, babySex: args.registerNewborn.sex }
+        : {}),
       // Normalised here as well as in the engine input, because the server
       // reads these two off the raw values and 3,1 kg is not 3 grams.
       weightGrams: toGrams(values.weightGrams),
@@ -250,6 +271,67 @@ export async function saveKnVisit(args: {
     createdAt: new Date().toISOString(),
     // Her calendar, not UTC's. See QueuedVisit.visitDate.
     visitDate: todayLocal(),
+    syncStatus: 'pending',
+  };
+
+  await put(record);
+  return record;
+}
+
+/**
+ * A family planning record, as a midwife saves it.
+ *
+ * NO FLAGS AND NO REFERRAL, and that is not an omission. Every other save in
+ * this file runs an engine that can raise a danger sign and generate a
+ * referral; family planning has none. @sahaibat/anc-engine is explicit that
+ * the KB intervals are PROGRAMME PRACTICE and have NOT had the clinical review
+ * dr. Rathi gave the antenatal, postnatal and newborn engines. So this records
+ * what she did and computes when the next thing falls due, and it does not
+ * raise a clinical alarm it has no signed rule for.
+ *
+ * The facts are stamped from the VISIT DATE, not from now(): a visit queued on
+ * a doorstep and synced three days later must not record the counselling as
+ * having happened at sync. See toKbFacts.
+ */
+export async function saveKbVisit(args: {
+  identity: BidanIdentity;
+  memberId: string | null;
+  motherName: string;
+  /** The delivery this episode follows, where the device knows of one. */
+  deliveryDate?: string | null;
+  values: KbFormValues;
+}): Promise<QueuedVisit> {
+  const { identity, memberId, motherName, values } = args;
+  const facts = toKbFacts(values);
+
+  const record: QueuedVisit = {
+    localId: generateLocalId(),
+    profileId: identity.profileId,
+    ngoId: identity.ngoId,
+    memberId,
+    flow: 'kb',
+    /* The step the episode has reached, which is what a register row should
+       say about it. Not a visit "type" in the sense the other flows use, but
+       it is the one word that describes this contact. */
+    visitType: values.methodCode || 'konseling',
+    motherName,
+    gestationalWeeks: null,
+    daysPostpartum: null,
+    data: {
+      ...values,
+      ...facts,
+      deliveryDate: args.deliveryDate ?? null,
+      product: values.product || null,
+      quantity: values.quantity || null,
+      isBreastfeeding: values.isBreastfeeding,
+    },
+    // There is no quality score for a family planning contact, and inventing
+    // one would be reported as if it meant what the 10T score means.
+    qualityScore: null,
+    flags: [],
+    referNow: false,
+    createdAt: new Date().toISOString(),
+    visitDate: values.visitDate || todayLocal(),
     syncStatus: 'pending',
   };
 
