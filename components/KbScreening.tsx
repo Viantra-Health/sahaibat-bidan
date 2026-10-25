@@ -27,10 +27,28 @@ import { useLang } from '@/lib/lang';
 
 export interface ScreeningAnswers { [code: string]: boolean | null }
 
-export function useScreening(formulation: string, answers: ScreeningAnswers): Screening {
+/**
+ * `from` the engine's facts, not just her answers.
+ *
+ * Some rows on these lists are arithmetic, not questions. "Antara 48 jam dan
+ * 4 minggu pascasalin" is settled by a delivery date the device already holds,
+ * and the screen used to ask for it anyway — so a mother on the day she gave
+ * birth was offered the copper IUD with that row reading "Belum ditanyakan"
+ * (case K-13). The delivery date was two lines away in the same component.
+ *
+ * Breastfeeding is passed as given, including null. The engine derives nothing
+ * from an unrecorded answer, which is the whole point: "not recorded" must
+ * never be read as "not breastfeeding".
+ */
+export function useScreening(
+  formulation: string,
+  answers: ScreeningAnswers,
+  known: { deliveryDate?: string | null; isBreastfeeding?: boolean | null; today?: string } = {},
+): Screening {
+  const { deliveryDate = null, isBreastfeeding = null, today } = known;
   return useMemo(
-    () => screeningFor(formulation || null, { answers }),
-    [formulation, answers],
+    () => screeningFor(formulation || null, { answers, deliveryDate, isBreastfeeding, today }),
+    [formulation, answers, deliveryDate, isBreastfeeding, today],
   );
 }
 
@@ -85,6 +103,17 @@ export default function KbScreeningList({ screening, answers, onAnswer }: {
               {unanswered && (
                 <div style={{ fontSize: 11.5, color: C.amber, marginTop: 2 }}>
                   {t('Belum ditanyakan', 'Not asked')}
+                </div>
+              )}
+              {/* WHERE AN ANSWER CAME FROM. A "no" the app worked out from the
+                  delivery date and a "no" the midwife gave are different
+                  claims, and she must be able to tell which she is looking at —
+                  not least so she can overrule it, which the buttons below
+                  still allow. */}
+              {i.from === 'record' && (
+                <div style={{ fontSize: 11.5, color: C.dim, marginTop: 2 }}>
+                  {t(`Dari catatan${i.via ? ' · ' + i.via : ''}`,
+                     `From the record${i.via ? ' · ' + i.via : ''}`)}
                 </div>
               )}
               <div style={{ display: 'flex', gap: 6, marginTop: 7 }}>

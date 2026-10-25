@@ -101,7 +101,15 @@ export default function KbPage() {
     ? formulationsFor(values.methodCode)[0]?.code
     : undefined;
   const screeningFormulation = values.formulationCode || only || '';
-  const screening = useScreening(screeningFormulation, answers);
+  /* The delivery date and breastfeeding answer are already on this screen —
+     postpartumRestriction below takes both. Passing them here too lets the
+     engine answer the postpartum rows instead of asking her for a date she
+     recorded herself. */
+  const screening = useScreening(screeningFormulation, answers, {
+    deliveryDate,
+    isBreastfeeding: values.isBreastfeeding,
+    today: values.visitDate || todayLocal(),
+  });
 
   const pp = screeningFormulation && deliveryDate
     ? postpartumRestriction(screeningFormulation, deliveryDate,
