@@ -97,7 +97,12 @@ export function buildReferralLetter(input: ReferralLetterInput): string {
   L.push('Mohon pemeriksaan dan penanganan lebih lanjut.');
   L.push('');
   L.push(`Bidan        : ${input.bidanName ?? '__________________'}`);
-  if (input.facility) L.push(`Posyandu     : ${input.facility}`);
+  /* "Posyandu" was wrong twice over (case J-03). A bidan referring from a
+     Praktik Mandiri, a Polindes or a home visit is not writing from a Posyandu,
+     and the value passed here is her WILAYAH, not a facility name — so the line
+     read "Posyandu: <village>" and also repeated the Wilayah line above it.
+     Named for what it is: where the referral was written from. */
+  if (input.facility) L.push(`Tempat       : ${input.facility}`);
   L.push('Tanda tangan : __________________');
   L.push('');
   L.push('— Dibuat dengan SahAIbat Bidan');
