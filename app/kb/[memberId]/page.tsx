@@ -349,6 +349,10 @@ export default function KbPage() {
                   : t('Belum bisa dinilai dari pedoman', 'The guideline cannot judge this yet')}
             </strong>
             {verdict.category !== null && (() => {
+              /* 'lengkap' for every clinic, decided 24 Oct 2026. Pedoman p100
+                 permits a limited facility to collapse 1-4 into boleh / tidak
+                 boleh; we show the fuller scale everywhere rather than hide
+                 the category-3 nuance from a bidan who can act on it. */
               const d = displayCategory(verdict.category, 'lengkap');
               return <> · {t(d.text_id, d.text_en)}</>;
             })()}
