@@ -89,7 +89,14 @@ export default function KbScreeningList({ screening, answers, onAnswer }: {
 
       <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
         {screening.items.map((i) => {
-          const v = answers[i.condition.code] ?? null;
+          /* `i.answer`, NOT the local answers map. The engine has already
+             resolved the precedence — her answer, then a coded diagnosis, then
+             what the record settles — and reading the map instead threw the
+             third away: the row printed "Dari catatan · hari ke-0 pascasalin"
+             and, directly above it, "Belum ditanyakan" with "?" highlighted,
+             because the engine had answered and this had not noticed. DOK was
+             fixed this way and the same line here was missed. */
+          const v = i.answer;
           const unanswered = v === null;
           return (
             <div key={i.condition.code} style={{

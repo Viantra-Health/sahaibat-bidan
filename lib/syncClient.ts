@@ -93,6 +93,29 @@ async function runSync(): Promise<SyncResult> {
   return { synced, failed };
 }
 
+/**
+ * What this build expects a register record to contain.
+ *
+ * BUMP THIS WHENEVER THE CLIENT STARTS READING A NEW REGISTER FIELD.
+ *
+ * The register is cached for 24 hours, which is right for its usual job —
+ * someone registered yesterday is worth a day's staleness, and refetching on
+ * every launch would spend a field worker's data for nothing. It is wrong for
+ * a SHAPE change: the server starts sending a new field, every device keeps
+ * serving yesterday's records without it, and for up to a day the app behaves
+ * exactly as though the fix had never shipped.
+ *
+ * That is not hypothetical. `deliveryDate` was added to the register so the KB
+ * screen could find a home birth's date, the deployment was confirmed live,
+ * and the re-test still saw "Belum ditanyakan" — because the device was still
+ * serving a register fetched before the field existed (case K-13c).
+ *
+ * So the cache is keyed on the shape as well as the clock. A build that reads
+ * a newer field refetches once, immediately, and is then back on the 24-hour
+ * rhythm.
+ */
+const REGISTER_SHAPE = '2026-10-25.deliveryDate';
+
 // ── Download ─────────────────────────────────────────────────────────────────
 // Cached for 24h per profile. A stale register is a search that misses someone
 // registered yesterday; a failed fetch that wipes the cache is a search that
@@ -101,9 +124,23 @@ export async function syncRegister(profileId: string, force = false): Promise<Re
   if (!profileId) return { count: 0, source: 'skipped' };
 
   const key = `bidan_register_sync_${profileId}`;
+  const shapeKey = `bidan_register_shape_${profileId}`;
   const existing = await getRegisterCount();
 
-  if (!force && existing > 0) {
+  /* A register fetched by an older build does not hold the fields this one
+     reads, however fresh it is. Checked before the clock, because the clock
+     would otherwise keep serving it for another day. */
+  let staleShape = false;
+  try {
+    staleShape = localStorage.getItem(shapeKey) !== REGISTER_SHAPE;
+  } catch {
+    /* Storage unavailable (private mode, blocked site data). Refetching is the
+       safe answer, and it is also what happens today when the timestamp cannot
+       be read, so this changes nothing for that case. */
+    staleShape = true;
+  }
+
+  if (!force && !staleShape && existing > 0) {
     const last = localStorage.getItem(key);
     if (last && (Date.now() - new Date(last).getTime()) / 3_600_000 < 24) {
       return { count: existing, source: 'cached' };
@@ -119,6 +156,10 @@ export async function syncRegister(profileId: string, force = false): Promise<Re
 
     if (records.length > 0) await saveRegister(records);
     localStorage.setItem(key, new Date().toISOString());
+    /* Only after the records are actually stored. Stamping the shape on a
+       fetch that failed to save would suppress the next refetch and leave the
+       device permanently short of the field. */
+    try { localStorage.setItem(shapeKey, REGISTER_SHAPE); } catch { /* see above */ }
 
     return {
       count: records.length || existing,
