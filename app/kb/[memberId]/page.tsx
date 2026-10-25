@@ -58,6 +58,7 @@ export default function KbPage() {
   const [returnOutcome, setReturnOutcome] = useState<ReturnOutcome | null>(null);
   const [expanded, setExpanded] = useState<KbSituation | null>(null);
   const [answers, setAnswers] = useState<ScreeningAnswers>({});
+  const [acknowledged, setAcknowledged] = useState(false);
 
   const [values, setValues] = useState<KbFormValues>(EMPTY_KB);
   const [saving, setSaving] = useState(false);
@@ -143,6 +144,11 @@ export default function KbPage() {
               formulation: screeningFormulation,
               source_pages: screening.source,
               answers,
+              /* The INTENT only. Who and when are written by the sync from
+                 the profile this request authenticated as — a device can say
+                 anything, and an acknowledgement nobody can attribute is not
+                 an acknowledgement. */
+              acknowledged,
               unanswered: screening.unanswered.map((i) => i.condition.code),
               present: screening.present.map((i) => i.condition.code),
               /* The verdict AS IT STOOD when she was counselled, with the
@@ -353,6 +359,26 @@ export default function KbPage() {
               </div>
             )}
           </div>
+        )}
+
+        {screeningFormulation && screening.source && (
+          <label style={{
+            display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 12,
+            padding: '12px 14px', borderRadius: 11, cursor: 'pointer',
+            background: C.card, border: `1px solid ${acknowledged ? C.ok : C.border}`,
+          }}>
+            <input type="checkbox" checked={acknowledged}
+                   onChange={(e) => setAcknowledged(e.target.checked)}
+                   style={{ marginTop: 3, width: 18, height: 18 }} />
+            <span style={{ fontSize: 13.5, lineHeight: 1.55, color: C.white }}>
+              {t('Saya sudah membaca hasil penapisan ini dan membahasnya dengan klien.',
+                 'I have read this screening result and discussed it with the client.')}
+              <span style={{ display: 'block', color: C.dim, fontSize: 12.5, marginTop: 3 }}>
+                {t('Nama dan waktunya dicatat otomatis saat terkirim.',
+                   'Your name and the time are recorded automatically when it uploads.')}
+              </span>
+            </span>
+          </label>
         )}
 
         {screeningFormulation && (
