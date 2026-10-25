@@ -105,6 +105,18 @@ export interface RegisterRecord {
   isPregnant: boolean;
   edd: string | null;
   /**
+   * When she gave birth, where the register can tell.
+   *
+   * `deliverySource` says whether anybody actually recorded a delivery:
+   * 'recorded' is a delivery row, 'newborn' is her baby's date of birth, and
+   * 'pnc_visit' is a postnatal visit's day count walked back. The last two are
+   * real dates and are NOT records of the birth — which is the ordinary case
+   * for a home birth the midwife met afterwards, and exactly the mother for
+   * whom the 42-day window matters most.
+   */
+  deliveryDate?: string | null;
+  deliverySource?: 'recorded' | 'newborn' | 'pnc_visit' | null;
+  /**
    * The last few visits, newest first.
    *
    * Carried with the register rather than fetched on tap, because the midwife
@@ -253,7 +265,22 @@ export async function getLocalDeliveryDate(memberId: string): Promise<string | n
     const d = (v.data as any)?.deliveryDate ?? v.visitDate;
     if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
   }
-  return null;
+
+  /* ── A BIRTH THIS DEVICE NEVER RECORDED ────────────────────────────────
+     Only queued delivery visits were consulted, so a mother whose baby was
+     born at home before the midwife met her had no delivery date at all —
+     no KBPP header, no postpartum restriction, and the 48h-4wk row asked by
+     hand beside a baby whose birthday is in the register (case K-13/D2).
+
+     The register now carries the date, worked out server-side from her
+     newborn's date of birth or a postnatal visit's day count. Read second, so
+     a delivery SHE recorded on this device always wins — including one still
+     sitting in the queue, which the server has not seen yet. */
+  const rec = await getRegisterRecord(memberId);
+  const fromRegister = rec?.deliveryDate;
+  return typeof fromRegister === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fromRegister)
+    ? fromRegister
+    : null;
 }
 
 export async function queueCounts(): Promise<{ waiting: number; rejected: number }> {
