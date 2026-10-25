@@ -25,7 +25,15 @@ import { getRegisterRecord, getLocalDeliveryDate, type RegisterRecord } from '@/
 import { saveKbVisit } from '@/lib/saveVisit';
 import { syncPendingVisits } from '@/lib/syncClient';
 import KbForm, { EMPTY_KB, type KbFormValues } from '@/components/KbForm';
-import { kbppWindow, KBPP_DAYS } from '@sahaibat/anc-engine';
+import {
+  KbSituationPicker, KbReturnVisit,
+  type KbSituation, type KbSpecialNeed, type ReturnOutcome,
+} from '@/components/KbSituation';
+import KbScreeningList, { useScreening, type ScreeningAnswers } from '@/components/KbScreening';
+import {
+  kbppWindow, KBPP_DAYS, kbFormulation, formulationsFor, needsFormulation,
+  postpartumRestriction, provisionRequirement,
+} from '@sahaibat/anc-engine';
 import { C } from '@/components/ui';
 import { useLang } from '@/lib/lang';
 import AppHeader from '@/components/AppHeader';
@@ -39,6 +47,17 @@ export default function KbPage() {
   const [identity, setIdentity] = useState<BidanIdentity | null>(null);
   const [record, setRecord] = useState<RegisterRecord | null>(null);
   const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
+  /* ── THE ABPK STAGES ───────────────────────────────────────────────────
+     'situasi' is the flipchart's welcome tab and comes FIRST, because opening
+     on a method assumes the visit is "pick a contraceptive" and most are not.
+     'ulang' is the purple tab, asked before anything is recorded. */
+  const [stage, setStage] = useState<'situasi' | 'ulang' | 'form'>('situasi');
+  const [situation, setSituation] = useState<KbSituation | null>(null);
+  const [specialNeed, setSpecialNeed] = useState<KbSpecialNeed | null>(null);
+  const [returnOutcome, setReturnOutcome] = useState<ReturnOutcome | null>(null);
+  const [expanded, setExpanded] = useState<KbSituation | null>(null);
+  const [answers, setAnswers] = useState<ScreeningAnswers>({});
+
   const [values, setValues] = useState<KbFormValues>(EMPTY_KB);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -73,6 +92,21 @@ export default function KbPage() {
             `The KBPP window is open — day ${win.day} after delivery, closes ${win.closes_on}.`)
     : null;
 
+  /* A method with a single formulation screens under that one without asking;
+     otherwise the screening waits for the choice, because KPK and KPP have
+     different lists and that is the whole point of the axis. */
+  const only = !needsFormulation(values.methodCode) && values.methodCode
+    ? formulationsFor(values.methodCode)[0]?.code
+    : undefined;
+  const screeningFormulation = values.formulationCode || only || '';
+  const screening = useScreening(screeningFormulation, answers);
+
+  const pp = screeningFormulation && deliveryDate
+    ? postpartumRestriction(screeningFormulation, deliveryDate,
+                            values.isBreastfeeding, values.visitDate || undefined)
+    : null;
+  const prov = screeningFormulation ? provisionRequirement(screeningFormulation) : null;
+
   async function handleSave() {
     if (!identity || !record || saving) return;
     setSaving(true);
@@ -83,6 +117,27 @@ export default function KbPage() {
         motherName: record.name,
         deliveryDate,
         values,
+        /* Why she came and what the screening found, in the same two
+           namespaced blocks DOK writes, so v_kb can carry them without
+           translating. Null answers are KEPT — nobody asked is a finding. */
+        screening: {
+          abpk: {
+            situation,
+            special_need: specialNeed,
+            return_outcome: returnOutcome,
+            dual_protection_discussed: situation === 'ganda' ? true : null,
+            recorded_at: values.visitDate || todayLocal(),
+          },
+          ...(screeningFormulation ? {
+            medis: {
+              formulation: screeningFormulation,
+              source_pages: screening.source,
+              answers,
+              unanswered: screening.unanswered.map((i) => i.condition.code),
+              present: screening.present.map((i) => i.condition.code),
+            },
+          } : {}),
+        },
       });
       setSaved(true);
       syncPendingVisits().catch(() => {});
@@ -126,13 +181,90 @@ export default function KbPage() {
     );
   }
 
+  // ── Stage 1: why she came ───────────────────────────────────────────────
+  if (stage === 'situasi') {
+    return (
+      <>
+        <AppHeader />
+        <main style={{ padding: 20, maxWidth: 480, margin: '0 auto' }}>
+          <button onClick={() => router.back()} style={linkBtn}>
+            {t('← Kembali', '← Back')}
+          </button>
+          <p style={{ fontSize: 13, color: C.dim, margin: '0 0 14px' }}>
+            {record.name}{record.village ? ` · ${record.village}` : ''}
+          </p>
+          {kbppNote && (
+            <div style={{
+              borderRadius: 11, padding: '12px 14px', marginBottom: 16,
+              background: C.card2, border: `1px solid ${C.border}`,
+              fontSize: 13.5, lineHeight: 1.55, color: C.white,
+            }}>{kbppNote}</div>
+          )}
+          <KbSituationPicker
+            expanded={expanded}
+            onExpand={setExpanded}
+            onPick={(sit, need) => {
+              setSituation(sit);
+              setSpecialNeed(need);
+              /* The return tab asks about complaints before anything is
+                 recorded; every other situation goes straight to the form. */
+              setStage(sit === 'ulang' ? 'ulang' : 'form');
+            }}
+          />
+        </main>
+      </>
+    );
+  }
+
+  // ── Stage 2: the return visit ───────────────────────────────────────────
+  if (stage === 'ulang') {
+    return (
+      <>
+        <AppHeader />
+        <main style={{ padding: 20, maxWidth: 480, margin: '0 auto' }}>
+          <button onClick={() => setStage('situasi')} style={linkBtn}>
+            {t('← Pilih keperluan lain', '← Choose a different reason')}
+          </button>
+          <KbReturnVisit
+            methodLabel={null}
+            onPick={(o) => {
+              setReturnOutcome(o);
+              /* Wanting to switch ends this method and starts another, so the
+                 form opens with the ending ticked and a reason already set —
+                 she said it, and asking again would read as not listening. */
+              if (o === 'ganti') {
+                setValues((v) => ({ ...v, ended: true, endReason: 'ganti_cara' }));
+              } else if (o === 'efek_samping') {
+                setValues((v) => ({ ...v, ended: false, endReason: '' }));
+              }
+              setStage('form');
+            }}
+          />
+        </main>
+      </>
+    );
+  }
+
+  // ── Stage 3: the record itself ──────────────────────────────────────────
   return (
     <>
       <AppHeader />
       <main style={{ padding: 20, maxWidth: 480, margin: '0 auto' }}>
-        <button onClick={() => router.back()} style={linkBtn}>
+        <button onClick={() => setStage(returnOutcome ? 'ulang' : 'situasi')} style={linkBtn}>
           {t('← Kembali', '← Back')}
         </button>
+
+        {returnOutcome === 'efek_samping' && (
+          <div style={{
+            borderRadius: 11, padding: '12px 14px', marginBottom: 14,
+            background: C.card2, border: `1px solid ${C.amber}`,
+            fontSize: 13.5, lineHeight: 1.55, color: C.white,
+          }}>
+            {t('Ada keluhan. Catat keluhannya di catatan bidan, dan putuskan bersama klien: atasi efek sampingnya, atau ganti cara.',
+               'There are complaints. Write them in the midwife’s note, and decide together: manage the side effect, or switch method.')}
+          </div>
+        )}
+
         <KbForm
           motherName={record.name}
           subtitle={[record.village, t('Keluarga Berencana', 'Family planning')]
@@ -143,6 +275,48 @@ export default function KbPage() {
           onSave={handleSave}
           saving={saving}
         />
+
+        {pp?.restricted && (
+          <div style={{
+            borderRadius: 11, padding: '12px 14px', marginTop: 14,
+            background: C.card2, border: `1px solid ${C.amber}`,
+            fontSize: 13.5, lineHeight: 1.55, color: C.white,
+          }}>
+            <strong>{t('Batasan pascasalin', 'Postpartum restriction')}</strong>
+            {' · '}{t(pp.reason_id ?? '', pp.reason_en ?? '')}
+            {pp.source && <span style={{ color: C.dimmer, fontSize: 11.5 }}> {pp.source}</span>}
+          </div>
+        )}
+
+        {prov && (prov.kind === 'tindakan' || prov.kind === 'khusus') && (
+          <div style={{
+            borderRadius: 11, padding: '12px 14px', marginTop: 12,
+            background: C.card, border: `1px solid ${C.border}`,
+            fontSize: 13, lineHeight: 1.55, color: C.dim,
+          }}>
+            <strong style={{ color: C.white }}>{t('Pemberian', 'Provision')}</strong>
+            {' · '}{t(prov.requirement_id, prov.requirement_en)}
+            {prov.removalIsAProcedure && (
+              <div style={{ color: C.amber, marginTop: 4 }}>
+                {t('Pelepasannya juga tindakan — pastikan klien bisa menjangkau tenaga terlatih untuk melepasnya nanti.',
+                   'Removal is a procedure too — make sure she can reach trained staff to have it taken out later.')}
+              </div>
+            )}
+            {prov.ifUnavailable_id && (
+              <div style={{ marginTop: 4 }}>{t(prov.ifUnavailable_id, prov.ifUnavailable_en ?? '')}</div>
+            )}
+          </div>
+        )}
+
+        {screeningFormulation && (
+          <KbScreeningList
+            screening={screening}
+            answers={answers}
+            onAnswer={(code, v) => setAnswers((a) => ({ ...a, [code]: v }))}
+          />
+        )}
+
+        <div style={{ height: 120 }} />
       </main>
     </>
   );

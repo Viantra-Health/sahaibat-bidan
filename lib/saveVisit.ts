@@ -300,6 +300,16 @@ export async function saveKbVisit(args: {
   /** The delivery this episode follows, where the device knows of one. */
   deliveryDate?: string | null;
   values: KbFormValues;
+  /**
+   * Why she came, and what the eligibility screening found.
+   *
+   * Two namespaced blocks, the same shape DOK writes into
+   * dok_kb_episodes.screening -- `abpk` and `medis` -- so v_kb carries them
+   * without translating. Stored verbatim rather than flattened into columns,
+   * because ABPK is revised and a column per question would need a migration
+   * each time it changed.
+   */
+  screening?: Record<string, unknown> | null;
 }): Promise<QueuedVisit> {
   const { identity, memberId, motherName, values } = args;
   const facts = toKbFacts(values);
@@ -321,6 +331,7 @@ export async function saveKbVisit(args: {
       ...values,
       ...facts,
       deliveryDate: args.deliveryDate ?? null,
+      screening: args.screening ?? null,
       product: values.product || null,
       quantity: values.quantity || null,
       isBreastfeeding: values.isBreastfeeding,
