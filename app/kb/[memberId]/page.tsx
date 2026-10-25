@@ -33,6 +33,7 @@ import KbScreeningList, { useScreening, type ScreeningAnswers } from '@/componen
 import {
   kbppWindow, KBPP_DAYS, kbFormulation, formulationsFor, needsFormulation,
   postpartumRestriction, provisionRequirement,
+  verdictFor, displayCategory, categoryConditions,
 } from '@sahaibat/anc-engine';
 import { C } from '@/components/ui';
 import { useLang } from '@/lib/lang';
@@ -107,6 +108,15 @@ export default function KbPage() {
     : null;
   const prov = screeningFormulation ? provisionRequirement(screeningFormulation) : null;
 
+  /* The category, once her conditions are known. Only conditions answered YES
+     are passed; verdictFor() drops the whole verdict to unknown if any of
+     them has no transcribed row, which is almost always, and that is what
+     sends the bidan to Roda KLOP rather than to a confident wrong answer. */
+  const verdict = screeningFormulation && screening.present.length > 0
+    ? verdictFor(screeningFormulation,
+                 categoryConditions(screening.present.map((i) => i.condition.code)))
+    : null;
+
   async function handleSave() {
     if (!identity || !record || saving) return;
     setSaving(true);
@@ -135,6 +145,16 @@ export default function KbPage() {
               answers,
               unanswered: screening.unanswered.map((i) => i.condition.code),
               present: screening.present.map((i) => i.condition.code),
+              /* The verdict AS IT STOOD when she was counselled, with the
+                 guideline that produced it. A category recomputed years later
+                 against a revised edition is a different fact, and the record
+                 should say which one the conversation was based on. */
+              ...(verdict ? {
+                verdict: verdict.verdict,
+                category: verdict.category,
+                unscored: verdict.unscored,
+                guideline: verdict.source,
+              } : {}),
             },
           } : {}),
         },
@@ -304,6 +324,33 @@ export default function KbPage() {
             )}
             {prov.ifUnavailable_id && (
               <div style={{ marginTop: 4 }}>{t(prov.ifUnavailable_id, prov.ifUnavailable_en ?? '')}</div>
+            )}
+          </div>
+        )}
+
+        {verdict && (
+          <div style={{
+            borderRadius: 11, padding: '12px 14px', marginTop: 12,
+            background: C.card2, fontSize: 13.5, lineHeight: 1.55, color: C.white,
+            border: `1px solid ${verdict.verdict === 'recommended' ? C.ok
+              : verdict.verdict === 'not_recommended' ? C.red : C.amber}`,
+          }}>
+            <strong>
+              {verdict.verdict === 'recommended'
+                ? t('Direkomendasikan menurut pedoman', 'Recommended by the guideline')
+                : verdict.verdict === 'not_recommended'
+                  ? t('Tidak direkomendasikan menurut pedoman', 'Not recommended by the guideline')
+                  : t('Belum bisa dinilai dari pedoman', 'The guideline cannot judge this yet')}
+            </strong>
+            {verdict.category !== null && (() => {
+              const d = displayCategory(verdict.category, 'lengkap');
+              return <> · {t(d.text_id, d.text_en)}</>;
+            })()}
+            {verdict.unscored.length > 0 && (
+              <div style={{ color: C.dim, marginTop: 4, fontSize: 12.5 }}>
+                {t(`${verdict.unscored.length} kondisi tidak punya baris di pedoman ini. Nilai dengan Roda KLOP.`,
+                   `${verdict.unscored.length} condition(s) have no row here. Judge them with Roda KLOP.`)}
+              </div>
             )}
           </div>
         )}
