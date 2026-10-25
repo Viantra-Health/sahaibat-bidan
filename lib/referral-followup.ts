@@ -30,7 +30,7 @@
 // recorded as unanswered and asked again next time.
 
 /** What the midwife can say about a referral she made. */
-export type ArrivalAnswer = 'arrived' | 'did_not_go' | 'unknown';
+export type ArrivalAnswer = 'arrived' | 'did_not_go' | 'declined' | 'unknown';
 
 export interface OpenReferral {
   id: number;
@@ -124,19 +124,30 @@ export function arrivalPatch(
   time_to_arrival_hours: number | null;
   outcome?: string;
   outcome_notes?: string | null;
+  declined_at?: string;
+  declined_reason?: string | null;
 } | null {
   if (answer === 'unknown') return null;
 
   const note = String(opts.note ?? '').trim() || null;
   const answeredAt = new Date().toISOString();
 
-  if (answer === 'did_not_go') {
+  if (answer === 'did_not_go' || answer === 'declined') {
     return {
       arrival_answered_at: answeredAt,
       arrival_confirmed: false,
       arrival_time: null,
       time_to_arrival_hours: null,
       outcome_notes: note,
+      /* A REFUSAL IS ITS OWN COLUMN, not a flavour of non-arrival.
+         Both answers close the arrival question — asking "did she arrive?" at
+         the next visit is wrong once she has said no — but only one of them
+         records a decision she made. declined_at carries that; a plain
+         did_not_go leaves it null, so the two never read alike.
+         See sql/j5-referral-declined.sql. */
+      ...(answer === 'declined'
+        ? { declined_at: answeredAt, declined_reason: note }
+        : {}),
     };
   }
 
@@ -161,9 +172,16 @@ export function arrivalPatch(
   };
 }
 
-/** The three answers, for a picker. Labels live with the logic they describe. */
+/** The answers, for a picker. Labels live with the logic they describe. */
 export const ARRIVAL_ANSWERS: Array<{ value: ArrivalAnswer; id: string; en: string }> = [
   { value: 'arrived', id: 'Ya, dia pergi', en: 'Yes, she went' },
   { value: 'did_not_go', id: 'Tidak pergi', en: 'She did not go' },
+  /* ── SHE SAID NO, AND THAT IS NOT THE SAME AS NOT GOING ─────────────────
+     "Tidak pergi" is an absence of information about what happened after she
+     left. "Menolak" is a decision she made, in the room. They carry different
+     weight for her care and for any count of referrals refused rather than
+     lost, and before this the product could only express the first — there was
+     no control anywhere to record a refusal (case J-05). */
+  { value: 'declined', id: 'Menolak dirujuk', en: 'She declined the referral' },
   { value: 'unknown', id: 'Belum tahu', en: 'Do not know yet' },
 ];

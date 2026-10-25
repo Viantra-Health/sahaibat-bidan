@@ -24,16 +24,24 @@ import { suggestCarePlan, planToFields, type PlanItem } from '@sahaibat/anc-engi
 import { C, ghostBtn, Section, Row, Hint, Field, Select, Tri } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
 import ReferralFollowUp from './ReferralFollowUp';
-import { followUpQuestion, type OpenReferral } from '@/lib/referral-followup';
+import { followUpQuestion, type OpenReferral, type ArrivalAnswer } from '@/lib/referral-followup';
 import { checkAnc } from '@/lib/plausibility';
 import ConfirmWarnings from '@/components/ConfirmWarnings';
 
 export interface AncFormValues {
+  /* ── A REFUSAL SHE MADE, NOT AN ABSENCE OF INFORMATION ─────────────────
+     null means she did not refuse — never that she accepted. Shown only when
+     a referral is actually indicated. See sql/j5-referral-declined.sql. */
+  referralDeclined: boolean | null;
+  referralDeclineReason: string;
   /* ── THE REFERRAL SHE MADE, ANSWERED ─────────────────────────────────────
      Not a clinical finding of today's visit — the answer to a question about a
      referral days old. Empty means unanswered, which keeps the referral open
      and asks again next time. See lib/referral-followup.ts. */
-  referralAnswer: '' | 'arrived' | 'did_not_go' | 'unknown';
+  /* The vocabulary itself, not a copy of it. Written out by hand here, this
+     union silently stopped matching ArrivalAnswer the moment 'declined' was
+     added to it — and a union restated in two files always eventually does. */
+  referralAnswer: '' | ArrivalAnswer;
   referralNote: string;
   visitType: string;
   gestationalWeeks: string;
@@ -59,6 +67,7 @@ export interface AncFormValues {
 
 export const EMPTY_FORM: AncFormValues = {
   referralAnswer: '', referralNote: '',
+  referralDeclined: null, referralDeclineReason: '',
   visitType: 'K1', gestationalWeeks: '',
   weightKg: '', heightCm: '', bpSystolic: '', bpDiastolic: '',
   fundalHeightCm: '', lilaCm: '', djjBpm: '',
@@ -713,6 +722,65 @@ export default function AncForm({ motherName, motherAge, subtitle, values, onCha
                   fontWeight: w.willBeRefused ? 600 : 400,
                 }}>{t(w.id, w.en)}</div>
               ))}
+            </div>
+          )}
+          {/* ── SHE SAID NO ──────────────────────────────────────────────
+              A referral is advised and the woman declines — in the room, during
+              this conversation. The product could record that she never arrived
+              and had no way at all to record that she refused (case J-05,
+              25 Oct 2026): nothing on the referral screen, nothing in the
+              letter, nothing in her record. "Ibu menolak" existed only as a
+              reason for an unrecorded 10T standard.
+
+              IT SITS HERE, BEFORE SAVE, and not on the referral panel that
+              follows. That panel appears after the visit is queued and possibly
+              already uploaded, so a refusal captured there would need a second
+              write and a second way to fail. Captured here it travels with the
+              visit, reaches the server in the same request that creates the
+              referral, and works with no signal — the state she is usually in
+              when this matters.
+
+              NEVER A BLOCK. It does not cancel the referral or the letter: she
+              may change her mind, and the midwife should still hand her the
+              paper. It records a decision; it refuses nothing. */}
+          {referral.refer && (
+            <div style={{
+              marginBottom: 12, padding: '10px 12px', borderRadius: 10,
+              background: C.card2,
+              border: `1px solid ${values.referralDeclined ? C.amber : C.border}`,
+            }}>
+              <label style={{ display: 'flex', gap: 9, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={values.referralDeclined === true}
+                  onChange={(e) => onChange({
+                    ...values,
+                    referralDeclined: e.target.checked ? true : null,
+                    referralDeclineReason: e.target.checked ? values.referralDeclineReason : '',
+                  })}
+                  style={{ marginTop: 2, width: 18, height: 18 }}
+                />
+                <span style={{ fontSize: 13.5, color: C.white, lineHeight: 1.5 }}>
+                  {t('Ibu menolak dirujuk', 'She declined the referral')}
+                  <span style={{ display: 'block', color: C.dim, fontSize: 12, marginTop: 2 }}>
+                    {t('Dicatat sebagai keputusannya. Surat rujukan tetap bisa dibuat.',
+                       'Recorded as her decision. The referral letter can still be made.')}
+                  </span>
+                </span>
+              </label>
+              {values.referralDeclined === true && (
+                <input
+                  type="text"
+                  value={values.referralDeclineReason}
+                  onChange={(e) => onChange({ ...values, referralDeclineReason: e.target.value })}
+                  placeholder={t('Alasan (boleh dikosongkan)', 'Reason (may be left empty)')}
+                  style={{
+                    width: '100%', marginTop: 8, padding: '10px 11px', borderRadius: 9,
+                    background: C.field, color: C.white, fontSize: 13.5,
+                    border: `1px solid ${C.fieldLine}`,
+                  }}
+                />
+              )}
             </div>
           )}
           <button

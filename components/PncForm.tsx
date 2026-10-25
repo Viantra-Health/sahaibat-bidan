@@ -20,18 +20,21 @@
 // thermometer is still in her hand.
 
 import { useMemo } from 'react';
-import { generatePncFlags, shouldReferPnc, kfForDay } from '@sahaibat/anc-engine';
+import { generatePncFlags, shouldReferPnc, kfForDay, KBPP_DAYS } from '@sahaibat/anc-engine';
 import { C, Section, Row, Hint, Field, Select, Tri } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
 import ReferralFollowUp from './ReferralFollowUp';
-import { followUpQuestion, type OpenReferral } from '@/lib/referral-followup';
+import { followUpQuestion, type OpenReferral, type ArrivalAnswer } from '@/lib/referral-followup';
 
 export interface PncFormValues {
   /* ── THE REFERRAL SHE MADE, ANSWERED ─────────────────────────────────────
      Not a clinical finding of today's visit — the answer to a question about a
      referral days old. Empty means unanswered, which keeps the referral open
      and asks again next time. See lib/referral-followup.ts. */
-  referralAnswer: '' | 'arrived' | 'did_not_go' | 'unknown';
+  /* The vocabulary itself, not a copy of it. Written out by hand here, this
+     union silently stopped matching ArrivalAnswer the moment 'declined' was
+     added to it — and a union restated in two files always eventually does. */
+  referralAnswer: '' | ArrivalAnswer;
   referralNote: string;
   visitType: string;
   daysPostpartum: string;
@@ -45,6 +48,11 @@ export interface PncFormValues {
   jaundiceSevere: boolean | null;
   epdsScore: string;
   fpCounselling: boolean | null;
+  /* ── A REFUSAL SHE MADE, NOT AN ABSENCE OF INFORMATION ─────────────────
+     null means she did not refuse — never that she accepted. See the control
+     above the save button and sql/j5-referral-declined.sql. */
+  referralDeclined: boolean | null;
+  referralDeclineReason: string;
   complaints: string;
   followupPlan: string;
 }
@@ -55,7 +63,9 @@ export const EMPTY_PNC: PncFormValues = {
   bpSystolic: '', bpDiastolic: '', temperatureC: '',
   bleeding: '', lochiaFoul: null, woundInfected: null,
   breastfeedingEstablished: null, babyWeightKg: '', jaundiceSevere: null,
-  epdsScore: '', fpCounselling: null, complaints: '', followupPlan: '',
+  epdsScore: '', fpCounselling: null,
+  referralDeclined: null, referralDeclineReason: '',
+  complaints: '', followupPlan: '',
 };
 
 // Indonesian keyboards produce commas. The engine handles them in free text;
@@ -99,19 +109,44 @@ interface Props {
    */
   openReferral?: OpenReferral | null;
   subtitle?: string | null;
+  /**
+   * Open her family-planning screen. Absent where there is nothing to open —
+   * a mother being registered for the first time has no member id until the
+   * visit syncs, so /pnc/baru offers the window and not the button. An
+   * invitation that leads nowhere is worse than none.
+   */
+  onStartKb?: (() => void) | null;
   values: PncFormValues;
   onChange: (v: PncFormValues) => void;
   onSave: () => void;
   saving?: boolean;
 }
 
-export default function PncForm({ motherName, subtitle, values, onChange, onSave, saving, openReferral }: Props) {
+export default function PncForm({ motherName, subtitle, values, onChange, onSave, saving, openReferral, onStartKb }: Props) {
   const { t, lang } = useLang();
   const set = <K extends keyof PncFormValues>(k: K) => (val: PncFormValues[K]) =>
     onChange({ ...values, [k]: val });
 
   const days = num(values.daysPostpartum);
   const suggestedKf = days != null ? kfForDay(days) : null;
+
+  /* ── THE KBPP WINDOW, ON THE SCREEN WHERE SHE IS SITTING ────────────────
+     KBPP is contraception started within 42 days of delivery, and it is the
+     single most time-limited thing on a postnatal visit — yet this screen
+     asked "Konseling KB diberikan? Tidak / Ya" and never said how much of the
+     window was left (case C-03). The day count was already here in
+     daysPostpartum; nothing was done with it.
+
+     Computed from the day count rather than kbppWindow(), because this form
+     has the day and not the delivery date. KBPP_DAYS is the engine's, so the
+     two cannot drift on the number that matters. The 7-day "closing" warning
+     matches kbppWindow's, for the same reason it exists there: a window that
+     announces itself on the last day announces nothing. */
+  const kbpp = days == null || days < 0 ? null : {
+    day: days,
+    left: KBPP_DAYS - days,
+    state: days > KBPP_DAYS ? 'closed' : days >= KBPP_DAYS - 7 ? 'closing' : 'open',
+  } as const;
 
   const { flags, referral } = useMemo(() => {
     const input = toPncInput(values);
@@ -247,6 +282,43 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
           onChange={set('epdsScore')} numeric />
         <Hint>{t('≥ 10 perlu tindak lanjut, ≥ 13 kemungkinan depresi postpartum.',
                   '≥ 10 needs follow-up, ≥ 13 probable postnatal depression.')}</Hint>
+        {kbpp && (
+          <div style={{
+            marginTop: 10, padding: '11px 13px', borderRadius: 11,
+            background: C.card2, fontSize: 13.5, lineHeight: 1.55, color: C.white,
+            border: `1px solid ${kbpp.state === 'closed' ? C.border
+              : kbpp.state === 'closing' ? C.amber : C.ok}`,
+          }}>
+            <strong>
+              {t(`KB pascasalin — hari ke-${kbpp.day} dari ${KBPP_DAYS}`,
+                 `Postpartum family planning — day ${kbpp.day} of ${KBPP_DAYS}`)}
+            </strong>
+            <div style={{ color: kbpp.state === 'closing' ? C.amber : C.dim, fontSize: 12.5, marginTop: 3 }}>
+              {kbpp.state === 'closed'
+                ? t(`Jendela KBPP sudah lewat ${-kbpp.left} hari. KB tetap bisa dimulai — hanya tidak lagi tercatat sebagai KBPP.`,
+                    `The KBPP window closed ${-kbpp.left} days ago. She can still start family planning — it is simply no longer counted as KBPP.`)
+                : kbpp.state === 'closing'
+                  ? t(`Tinggal ${kbpp.left} hari. Konseling perlu satu kunjungan untuk diatur — tawarkan hari ini.`,
+                      `${kbpp.left} days left. Counselling takes a visit to arrange — offer it today.`)
+                  : t(`Tersisa ${kbpp.left} hari. Waktu terbaik menawarkan konseling KB.`,
+                      `${kbpp.left} days left. This is the time to offer family planning counselling.`)}
+            </div>
+            {/* THE INVITATION. The Tri below records that counselling happened;
+                it was never a way to DO it, so a midwife answering "Ya" had to
+                know on her own that a KB screen existed elsewhere. */}
+            {onStartKb && (
+              <button type="button" onClick={onStartKb} style={{
+                marginTop: 9, width: '100%', minHeight: 44, borderRadius: 10,
+                background: kbpp.state === 'closed' ? 'transparent' : C.teal,
+                color: kbpp.state === 'closed' ? C.dim : C.onAccent,
+                border: `1px solid ${kbpp.state === 'closed' ? C.border : C.teal}`,
+                fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+              }}>
+                {t('Buka konseling KB', 'Open family planning counselling')}
+              </button>
+            )}
+          </div>
+        )}
         <Tri label={t('Konseling KB diberikan?', 'Family planning counselling given?')} value={values.fpCounselling} onChange={set('fpCounselling')} />
       </Section>
 
@@ -261,6 +333,67 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
         background: 'linear-gradient(to top, var(--on-accent) 62%, rgba(4,36,30,0))',
       }}>
         <div style={{ maxWidth: 560, margin: '0 auto' }}>
+          {/* ── SHE SAID NO ──────────────────────────────────────────────
+              A referral is advised and the woman declines — in the room, during
+              this conversation, not days later. The product could record that
+              she never arrived and had no way at all to record that she refused
+              (case J-05, 25 Oct 2026): nothing on the referral screen, nothing
+              in the letter, nothing in her record.
+
+              IT SITS HERE, BEFORE SAVE, and not on the referral panel that
+              follows it. The panel appears after the visit is already queued and
+              possibly already uploaded, so a refusal captured there would need a
+              second write and a second way to fail. Captured here it travels
+              with the visit, reaches the server in the same request that creates
+              the referral, and works with no signal at all — which is the state
+              she is usually in when this matters.
+
+              NEVER A BLOCK. Recording a refusal does not cancel the referral or
+              the letter: she may still change her mind, and the midwife should
+              still be able to hand her the paper. It records a decision; it
+              refuses nothing. */}
+          {referral.refer && (
+            <div style={{
+              marginBottom: 8, padding: '10px 12px', borderRadius: 10,
+              background: C.card2, border: `1px solid ${values.referralDeclined ? C.amber : C.border}`,
+              textAlign: 'left',
+            }}>
+              <label style={{ display: 'flex', gap: 9, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={values.referralDeclined === true}
+                  onChange={(e) => onChange({
+                    ...values,
+                    referralDeclined: e.target.checked ? true : null,
+                    // Clearing the tick clears the reason, so a stale reason
+                    // cannot be filed against a refusal she did not make.
+                    referralDeclineReason: e.target.checked ? values.referralDeclineReason : '',
+                  })}
+                  style={{ marginTop: 2, width: 18, height: 18 }}
+                />
+                <span style={{ fontSize: 13.5, color: C.white, lineHeight: 1.5 }}>
+                  {t('Ibu menolak dirujuk', 'She declined the referral')}
+                  <span style={{ display: 'block', color: C.dim, fontSize: 12, marginTop: 2 }}>
+                    {t('Dicatat sebagai keputusannya. Surat rujukan tetap bisa dibuat.',
+                       'Recorded as her decision. The referral letter can still be made.')}
+                  </span>
+                </span>
+              </label>
+              {values.referralDeclined === true && (
+                <input
+                  type="text"
+                  value={values.referralDeclineReason}
+                  onChange={(e) => onChange({ ...values, referralDeclineReason: e.target.value })}
+                  placeholder={t('Alasan (boleh dikosongkan)', 'Reason (may be left empty)')}
+                  style={{
+                    width: '100%', marginTop: 8, padding: '10px 11px', borderRadius: 9,
+                    background: C.field, color: C.white, fontSize: 13.5,
+                    border: `1px solid ${C.fieldLine}`,
+                  }}
+                />
+              )}
+            </div>
+          )}
           {referral.refer && (
             <div style={{ fontSize: 12.5, color: C.red, marginBottom: 8, textAlign: 'center' }}>
               {t('Rujukan akan dibuat', 'A referral will be created')} ({referral.urgency === 'emergency'

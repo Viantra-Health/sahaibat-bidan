@@ -349,7 +349,20 @@ export default function KbPage() {
           </div>
         )}
 
-        {verdict && verdict.category !== null && (
+        {/* ── THE VERDICT, INCLUDING WHEN THERE ISN'T ONE ──────────────────
+            This was guarded on `verdict.category !== null`, and the whole
+            point of the box is that the guideline sometimes CANNOT judge —
+            which is exactly the case where category is null, because
+            worstCategory([]) returns null. So the "Belum bisa dinilai dari
+            pedoman" line was written inside a block that could never render
+            it, and for a woman with nothing flagged the screen showed no
+            verdict at all. Case K-14, 25 Oct 2026: the tester looked for
+            either verdict string and found neither.
+
+            An absent verdict is a finding and is shown as one, with the reason
+            it is absent — "no row in the book" and "you have not screened her
+            yet" are different situations and lead to different next steps. */}
+        {verdict && (
           <div style={{
             borderRadius: 11, padding: '12px 14px', marginTop: 12,
             background: C.card2, fontSize: 13.5, lineHeight: 1.55, color: C.white,
@@ -371,11 +384,22 @@ export default function KbPage() {
               const d = displayCategory(verdict.category, 'lengkap');
               return <> · {t(d.text_id, d.text_en)}</>;
             })()}
-            {verdict.unscored.length > 0 && (
+
+            {/* WHY it cannot judge. Ordered by what she should do about it. */}
+            {verdict.verdict === 'unknown' && (
               <div style={{ color: C.dim, marginTop: 4, fontSize: 12.5 }}>
-                {t(`${verdict.unscored.length} kondisi tidak punya baris di pedoman ini. Nilai dengan Roda KLOP.`,
-                   `${verdict.unscored.length} condition(s) have no row here. Judge them with Roda KLOP.`)}
+                {verdict.unscored.length > 0
+                  ? t(`${verdict.unscored.length} kondisi tidak punya baris di pedoman ini. Nilai dengan Roda KLOP.`,
+                      `${verdict.unscored.length} condition(s) have no row here. Judge them with Roda KLOP.`)
+                  : screening.unanswered.length > 0
+                    ? t(`Jawab dulu penapisan di bawah — ${screening.unanswered.length} kondisi belum ditanyakan.`,
+                        `Answer the screening below first — ${screening.unanswered.length} condition(s) not yet asked.`)
+                    : t('Tidak ada kondisi yang ditemukan, jadi tabel pedoman tidak memberi kategori. Keputusan tetap pada bidan dan pilihan klien.',
+                        'No condition was found, so the guideline table gives no category. The decision stays with the midwife and the client’s choice.')}
               </div>
+            )}
+            {verdict.source && (
+              <div style={{ color: C.dimmer, marginTop: 4, fontSize: 11.5 }}>{verdict.source}</div>
             )}
           </div>
         )}

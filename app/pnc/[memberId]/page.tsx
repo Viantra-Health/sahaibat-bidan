@@ -219,6 +219,10 @@ export default function PncVisitPage() {
         /* From the cached register, so the question works with no
            signal — the state she is usually in when it matters. */
         openReferral={record.openReferral}
+        /* The KBPP invitation. Only offered here, where she already has a
+           member id — /pnc/baru is registering her and has none until the
+           visit syncs, so that screen shows the window without the button. */
+        onStartKb={() => router.push(`/kb/${memberId}`)}
       />
     </main>
   );

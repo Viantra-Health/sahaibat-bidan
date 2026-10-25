@@ -130,8 +130,12 @@ export default function KbScreeningList({ screening, answers, onAnswer }: {
       </div>
 
       <div style={{ fontSize: 11.5, color: C.dimmer, marginTop: 10, lineHeight: 1.5 }}>
-        {t('Daftar ini menunjukkan kondisi yang perlu dipertimbangkan, bukan kategori 1–4. Keputusan tetap pada bidan dan pilihan klien.',
-           'This lists the conditions to consider, not a category 1–4. The decision stays with the midwife and the client’s choice.')}
+        {/* This used to end "bukan kategori 1-4", which was true of the LIST
+            and became misleading once the category is shown above it. The list
+            is still conditions; the category comes from a different page of the
+            same book, and neither is a decision. */}
+        {t('Daftar ini adalah kondisi yang perlu dipertimbangkan. Kategorinya berasal dari tabel Pedoman hlm. 104 dan ditampilkan di atas. Keputusan tetap pada bidan dan pilihan klien.',
+           'This lists the conditions to consider. The category comes from the Pedoman p104 table and is shown above. The decision stays with the midwife and the client’s choice.')}
       </div>
     </div>
   );
