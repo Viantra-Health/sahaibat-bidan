@@ -33,7 +33,7 @@ import KbScreeningList, { useScreening, type ScreeningAnswers } from '@/componen
 import {
   kbppWindow, KBPP_DAYS, kbFormulation, formulationsFor, needsFormulation,
   postpartumRestriction, provisionRequirement,
-  verdictFor, displayCategory, categoryConditions,
+  verdictFor, displayCategory, categoryConditionsFrom,
 } from '@sahaibat/anc-engine';
 import { C } from '@/components/ui';
 import { useLang } from '@/lib/lang';
@@ -113,9 +113,16 @@ export default function KbPage() {
      are passed; verdictFor() drops the whole verdict to unknown if any of
      them has no transcribed row, which is almost always, and that is what
      sends the bidan to Roda KLOP rather than to a confident wrong answer. */
-  const verdict = screeningFormulation && screening.present.length > 0
-    ? verdictFor(screeningFormulation,
-                 categoryConditions(screening.present.map((i) => i.condition.code)))
+  /* From her FACTS, not from the screening alone. The postpartum row sits on
+     the copper-IUD screening list and no other, so judging from the screening
+     made the combined pill look recommended three weeks after delivery. Her
+     delivery date is true about her whatever the screening asked. */
+  const verdict = screeningFormulation
+    ? verdictFor(screeningFormulation, categoryConditionsFrom({
+        screeningPresent: screening.present.map((i) => i.condition.code),
+        deliveryDate,
+        today: values.visitDate || undefined,
+      }))
     : null;
 
   async function handleSave() {
@@ -334,7 +341,7 @@ export default function KbPage() {
           </div>
         )}
 
-        {verdict && (
+        {verdict && verdict.category !== null && (
           <div style={{
             borderRadius: 11, padding: '12px 14px', marginTop: 12,
             background: C.card2, fontSize: 13.5, lineHeight: 1.55, color: C.white,
