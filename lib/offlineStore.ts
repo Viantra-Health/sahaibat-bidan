@@ -87,6 +87,11 @@ export interface VisitSummary {
   management: string | null;   // what she did about it
   followUp: string | null;     // what she planned next
   vitals: string | null;       // the numbers behind it
+  /* Which door recorded it: 'bidan' is a field worker, 'klinik' is a clinic
+     writing through DOK into this same register. Optional because a device
+     holding a register downloaded by an older build has visits without it,
+     and a missing source must read as "not stated", never as "mine". */
+  by?: 'bidan' | 'klinik' | null;
 }
 
 export interface RegisterRecord {

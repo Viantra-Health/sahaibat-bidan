@@ -59,7 +59,8 @@ export default function VisitHistory({ history }: { history?: VisitSummary[] }) 
         </div>
 
         <div style={{ fontSize: 12.5, color: C.dim, marginBottom: 7 }}>
-          {[fmtDate(last.date, lang), last.visitType, last.context].filter(Boolean).join(' · ')}
+          {[fmtDate(last.date, lang), last.visitType, last.context, source(last, t)]
+            .filter(Boolean).join(' · ')}
         </div>
 
         {/* The issue is the headline. If the last visit found something, it is
@@ -109,7 +110,8 @@ export default function VisitHistory({ history }: { history?: VisitSummary[] }) 
               background: C.card2,
             }}>
               <div style={{ fontSize: 11.5, color: C.dim, marginBottom: 5 }}>
-                {[fmtDate(v.date, lang), v.visitType, v.context].filter(Boolean).join(' · ')}
+                {[fmtDate(v.date, lang), v.visitType, v.context, source(v, t)]
+                  .filter(Boolean).join(' · ')}
               </div>
               {v.issue && <Line label={t('Masalah', 'Problem')} value={v.issue} small />}
               {v.management && <Line label={t('Tatalaksana', 'Management')} value={v.management} small />}
@@ -123,6 +125,23 @@ export default function VisitHistory({ history }: { history?: VisitSummary[] }) 
       )}
     </section>
   );
+}
+
+/**
+ * Who recorded this contact, when the register says.
+ *
+ * Only a clinic contact is labelled. A midwife reading her own register
+ * assumes a visit is hers — which it was, until DOK started writing antenatal
+ * contacts into the same register — so the word that carries information is
+ * the one that says this one was NOT. Labelling both would put "bidan" on
+ * every line she has ever recorded and bury the one that differs.
+ *
+ * An absent source says nothing at all: a device still holding a register
+ * downloaded before the field existed must not have those visits read as
+ * clinic visits, nor as hers.
+ */
+function source(v: VisitSummary, t: (id: string, en: string) => string): string | null {
+  return v.by === 'klinik' ? t('di klinik', 'at the clinic') : null;
 }
 
 function Line({ label, value, strong, small }: {
