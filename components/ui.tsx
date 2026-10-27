@@ -93,9 +93,12 @@ export function Hint({ children, warn }: { children: React.ReactNode; warn?: boo
   return <div style={{ fontSize: 12, color: warn ? C.amber : C.dim, margin: '-4px 0 10px' }}>{children}</div>;
 }
 
-export function Field({ label, unit, value, onChange, numeric, placeholder }: {
+export function Field({ label, unit, value, onChange, numeric, placeholder, onBlur }: {
   label: string; unit?: string; value: string; placeholder?: string;
   onChange: (v: string) => void; numeric?: boolean;
+  /** Tidy the value once she has finished typing — never on each keystroke,
+   *  which fights the typist halfway through a number. */
+  onBlur?: () => void;
 }) {
   return (
     <label style={{ flex: 1, display: 'block', marginBottom: 11 }}>
@@ -105,6 +108,7 @@ export function Field({ label, unit, value, onChange, numeric, placeholder }: {
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         placeholder={placeholder}
         inputMode={numeric ? 'decimal' : 'text'}
         style={{

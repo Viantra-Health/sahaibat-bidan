@@ -14,6 +14,7 @@ import {
   generateKnFlags, shouldReferKn,
 } from '@sahaibat/anc-engine';
 import { saveVisit as put, generateLocalId, type QueuedVisit } from './offlineStore';
+import { normaliseTime } from './plausibility';
 import { toEngineInputs, type AncFormValues } from '../components/AncForm';
 import { toPncInput, type PncFormValues } from '../components/PncForm';
 import { toDeliveryInput, type DeliveryFormValues } from '../components/DeliveryForm';
@@ -162,9 +163,15 @@ export async function saveDeliveryVisit(args: {
 
   // deliveryAt only when she gave a time. A fabricated midnight would be read
   // by the KF1 window as a real hour, and KF1 is 6–48 HOURS from the birth.
-  const deliveryAt = values.deliveryTime.trim()
-    ? `${values.deliveryDate}T${values.deliveryTime.trim()}:00`
-    : null;
+  /* NORMALISED, NOT PASTED. This used to interpolate whatever was typed, so
+     "14.30" — how a time is written in Indonesian — became
+     "2026-10-27T14.30:00" and the server refused the birth. normaliseTime
+     returns null for anything that is not a time, and the form has already
+     warned her about that; a null here means no hour was recorded rather than
+     a wrong one, which is the safe direction for a KF1 window counted in
+     hours. */
+  const deliveryTime = normaliseTime(values.deliveryTime);
+  const deliveryAt = deliveryTime ? `${values.deliveryDate}T${deliveryTime}` : null;
 
   const record: QueuedVisit = {
     localId: generateLocalId(),

@@ -32,17 +32,39 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   fallbackRoutes: { document: "/offline" },
   workboxOptions: {
     navigationPreload: true,
+    /* EVERY STATIC ROUTE THE APP HAS. /anc/baru and /kn/baru were missing, so
+       "Register a new mother" and "Newborn visit — new baby" — two of the three
+       buttons on the register screen — had no document to serve offline on a
+       phone that had just installed the app. The dynamic routes
+       (/anc/[memberId] and friends) cannot be precached; they rely on the
+       runtime rule below, which is why that rule has to actually work. */
     additionalManifestEntries: [
       { url: "/", revision: BUILD_REV },
       { url: "/search", revision: BUILD_REV },
+      { url: "/anc/baru", revision: BUILD_REV },
       { url: "/pnc/baru", revision: BUILD_REV },
+      { url: "/kn/baru", revision: BUILD_REV },
       { url: "/offline", revision: BUILD_REV },
     ],
     navigateFallbackDenylist: [/^\/api\//],
     runtimeCaching: [
-      // Never cache API routes: a stale register or a replayed sync is worse
-      // than no answer.
-      { urlPattern: /^\/api\/.*/, handler: "NetworkOnly" },
+      /* ── MATCHED ON THE PATH, BECAUSE WORKBOX MATCHES ON THE WHOLE URL ──
+         Every rule in this array used to be a RegExp anchored with ^\/ — and
+         Workbox execs a RegExp against url.href, which is
+         "https://bidan.sahaibat.com/search". A pattern anchored to a leading
+         slash cannot match a string that starts with "https:", so NONE of these
+         page rules had ever matched a single request since the day they were
+         written. Online that is invisible: an unmatched request just goes to
+         the network, which is what it would have done anyway. Offline it is the
+         whole bug — nothing but the four precached documents existed, so the
+         app opened and then went nowhere.
+
+         A function matcher takes url.pathname, which is what these patterns
+         were always describing. */
+      {
+        urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith("/api/"),
+        handler: "NetworkOnly",
+      },
       {
         /* ── NETWORK FIRST, WITH THE CACHE AS THE FALLBACK ──────────────────
            This was StaleWhileRevalidate, which serves the cached page and
@@ -60,7 +82,18 @@ const withPWA = require("@ducanh2912/next-pwa").default({
         // Every route the app actually has. This listed only /, /search, /anc
         // and /offline, so the postnatal, newborn and delivery screens were
         // never covered by it -- they had no fresh-first rule at all.
-        urlPattern: /^\/$|^\/search(\/.*)?$|^\/anc(\/.*)?$|^\/pnc(\/.*)?$|^\/kn(\/.*)?$|^\/persalinan(\/.*)?$|^\/offline$/,
+        /* Navigations AND the React payloads a client-side navigation fetches
+           (/search?_rsc=…). Those carry a query string, so even a corrected
+           path regex would have missed them, and missing them means the router
+           cannot move between screens offline — which is what "the app will not
+           open" looks like from the outside. */
+        urlPattern: ({ url, request, sameOrigin }) => {
+          if (!sameOrigin) return false;
+          if (url.pathname.startsWith("/api/")) return false;
+          const isPage = request.mode === "navigate" || url.searchParams.has("_rsc");
+          if (!isPage) return false;
+          return /^\/$|^\/search(\/.*)?$|^\/anc(\/.*)?$|^\/pnc(\/.*)?$|^\/kn(\/.*)?$|^\/kb(\/.*)?$|^\/persalinan(\/.*)?$|^\/offline$/.test(url.pathname);
+        },
         handler: "NetworkFirst",
         options: {
           cacheName: "bidan-pages-v1",
@@ -69,6 +102,9 @@ const withPWA = require("@ducanh2912/next-pwa").default({
         },
       },
       {
+        /* This one and the /_next/static rule below are the only two that ever
+           worked, because neither is anchored at the start — a RegExp with no
+           ^ matches anywhere in the href. They are why the app is fine online. */
         urlPattern: /\.(?:js|css|woff2?|png|jpg|svg|ico)$/,
         handler: "CacheFirst",
         options: {

@@ -23,7 +23,7 @@ import { useMemo, useState } from 'react';
 import { generateDeliveryFlags, shouldReferDelivery, linakes } from '@sahaibat/anc-engine';
 import { C, Section, Row, Hint, Field, Select, Tri } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
-import { todayLocal, checkDelivery } from '@/lib/plausibility';
+import { todayLocal, checkDelivery, normaliseTime } from '@/lib/plausibility';
 import ConfirmWarnings from '@/components/ConfirmWarnings';
 
 export interface BabyValues {
@@ -172,9 +172,11 @@ export default function DeliveryForm({ motherName, subtitle, values, onChange, o
     gestationalWeeks: values.gestationalWeeks,
     bloodLossMl: values.bloodLossMl,
     deliveryDate: values.deliveryDate,
+    deliveryTime: values.deliveryTime,
     birthWeightG: values.babies[0]?.weightGrams,
     babies: values.babies,
-  }), [values.gestationalWeeks, values.bloodLossMl, values.deliveryDate, values.babies]);
+  }), [values.gestationalWeeks, values.bloodLossMl, values.deliveryDate,
+       values.deliveryTime, values.babies]);
 
   const emergencies = flags.filter((f) => f.severity === 'EMERGENCY');
   const warnings = flags.filter((f) => f.severity === 'WARNING');
@@ -235,8 +237,16 @@ export default function DeliveryForm({ motherName, subtitle, values, onChange, o
         <Row>
           <Field label={t('Tanggal', 'Date')} value={values.deliveryDate}
             onChange={set('deliveryDate')} />
+          {/* Tidied when she leaves the box, so "14.30" becomes "14:30" in front
+              of her and the format teaches itself. Left exactly as typed when it
+              cannot be read — overwriting it would hide what she entered, and
+              the warning above already names it. */}
           <Field label={t('Jam', 'Time')} value={values.deliveryTime}
-            onChange={set('deliveryTime')} placeholder="14:30" />
+            onChange={set('deliveryTime')} placeholder="14.30"
+            onBlur={() => {
+              const tidy = normaliseTime(values.deliveryTime);
+              if (tidy && tidy.slice(0, 5) !== values.deliveryTime) set('deliveryTime')(tidy.slice(0, 5));
+            }} />
         </Row>
         {/* The postnatal clock starts here: KF1 is 6–48 hours, not days. */}
         <Hint>{t('Jam persalinan menentukan jadwal KF1 (6–48 jam).',

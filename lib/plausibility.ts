@@ -152,14 +152,54 @@ export function checkAnc(v: {
   return out;
 }
 
+/**
+ * A time written the way this country writes it, turned into HH:MM.
+ *
+ * ── WHY THIS EXISTS ──────────────────────────────────────────────────────
+ * The delivery form's "Jam" box is free text with 14:30 only as a placeholder,
+ * and a midwife typed 14.30 — which is how a time is written in Indonesian.
+ * saveVisit pasted it into `${date}T${time}:00`, the server handed
+ * "2026-10-27T14.30:00" to Postgres, and the birth was refused and stuck in the
+ * queue on her phone with a database parser message on screen.
+ *
+ * Null means "that is not a time". It never guesses: a bare "14" could be 14:00
+ * or an entry she had not finished, and KF1 is counted in HOURS from the birth.
+ * The matching rule runs on the server too (lib/clinical/field-time.ts there),
+ * because a phone that has not taken an update still has to be able to send.
+ */
+export function normaliseTime(raw: unknown): string | null {
+  const s = String(raw ?? '').trim();
+  if (!s) return null;
+  const m = /^(\d{1,2})\s*[:.\-]?\s*(\d{2})(?:\s*[:.\-]\s*(\d{2}))?$/.exec(s);
+  if (!m) return null;
+  const h = Number(m[1]), min = Number(m[2]), sec = m[3] === undefined ? 0 : Number(m[3]);
+  // 24:00 is a legal end-of-day, but a BIRTH at 24:00 belongs to the next date
+  // and this will not move the date underneath her.
+  if (h > 23 || min > 59 || sec > 59) return null;
+  const p = (n: number) => (n < 10 ? `0${n}` : String(n));
+  return `${p(h)}:${p(min)}:${p(sec)}`;
+}
+
 export function checkDelivery(v: {
   gestationalWeeks?: unknown; bloodLossMl?: unknown; deliveryDate?: unknown;
+  deliveryTime?: unknown;
   birthWeightG?: unknown;
   /** Each baby on the form. Only their outcome is read here. */
   babies?: Array<{ outcome?: unknown }>;
 }): Implausible[] {
   const out: Implausible[] = [];
   const ga = n(v.gestationalWeeks), loss = n(v.bloodLossMl), bw = n(v.birthWeightG);
+
+  /* ── THE HOUR, BEFORE THE SERVER REFUSES IT ───────────────────────────────
+     Caught here so she finds out while she is standing in front of the mother,
+     not days later as a refused visit in the queue. Blank is fine and means she
+     did not take the time; something unreadable is not. */
+  const timeRaw = String(v.deliveryTime ?? '').trim();
+  if (timeRaw && !normaliseTime(timeRaw)) {
+    out.push({ field: 'deliveryTime', willBeRefused: true,
+      id: `Jam "${timeRaw}" tidak terbaca. Tulis seperti 14.30 atau 14:30.`,
+      en: `The time "${timeRaw}" cannot be read. Write it like 14.30 or 14:30.` });
+  }
 
   /* ── A BABY WITH NO ANSWER IS NOT REGISTERED ──────────────────────────────
      The server registers a baby as a person only when the outcome is 'hidup'
