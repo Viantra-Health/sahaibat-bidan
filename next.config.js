@@ -29,7 +29,17 @@ const withPWA = require("@ducanh2912/next-pwa").default({
      was presumably meant to provide. */
   reloadOnOnline: false,
   disable: process.env.NODE_ENV === "development",
-  fallbackRoutes: { document: "/offline" },
+  /* ── THE OPTION NAME WAS WRONG, SO THERE WAS NO FALLBACK AT ALL ─────────
+     This read `fallbackRoutes`. FallbackRoutes is the TYPE name in
+     @ducanh2912/next-pwa; the option is `fallbacks`. An unknown key in a JS
+     config is silently ignored — no warning, no build error — so no
+     NavigationRoute was ever generated and a navigation that could not be
+     served fell through to the BROWSER's error page.
+
+     That is what a midwife saw in the field: tapping a mother offline gave
+     "This site can't be reached — ERR_FAILED" instead of the app's own offline
+     page. Reported 27 Oct 2026 with video. */
+  fallbacks: { document: "/offline" },
   workboxOptions: {
     navigationPreload: true,
     /* EVERY STATIC ROUTE THE APP HAS. /anc/baru and /kn/baru were missing, so

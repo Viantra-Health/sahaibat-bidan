@@ -82,6 +82,24 @@ for (const r of routes) {
   ok(`${r} renders from the precache alone`, missing.length === 0, missing.slice(0, 4).join(', '));
 }
 
+/* ── THE FALLBACK, WHICH WAS SILENTLY OFF ─────────────────────────────────
+ * The config said `fallbackRoutes: { document: "/offline" }`. FallbackRoutes is
+ * the TYPE name in @ducanh2912/next-pwa; the option is `fallbacks`. An unknown
+ * key in a JS config is ignored without a word, so no fallback was generated at
+ * all — and a navigation the worker could not serve fell through to the
+ * BROWSER's error page. A midwife tapping a mother offline saw
+ * "ERR_FAILED", not the app.
+ *
+ * Asserted against the generated worker, because the config looked right. */
+ok('THE OFFLINE FALLBACK EXISTS AT ALL', /handlerDidError/.test(sw))
+ok('...and the page rule carries it, not only the start url',
+  (() => {
+    const i = sw.indexOf('bidan-pages-v1')
+    return i !== -1 && sw.slice(i, i + 400).includes('handlerDidError')
+  })())
+ok('...and /offline is precached, so the fallback has something to serve',
+  precached.has('/offline'))
+
 /* ── 5. the API must never be cached ────────────────────────────────────── */
 ok('API requests are excluded from the page rule', /\/api\//.test(sw));
 
