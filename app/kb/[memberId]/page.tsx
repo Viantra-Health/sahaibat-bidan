@@ -38,6 +38,7 @@ import {
 } from '@sahaibat/anc-engine';
 import { C } from '@/components/ui';
 import { useLang } from '@/lib/lang';
+import { PlausibilityGate, needsPlausibilityCheck } from '@/components/PlausibilityGate';
 import AppHeader from '@/components/AppHeader';
 import { todayLocal } from '@/lib/plausibility';
 
@@ -45,7 +46,7 @@ export default function KbPage() {
   const router = useRouter();
   // From the path here, or from ?m= on the static route — see lib/memberId.ts.
   const memberId = useMemberId();
-  const { t } = useLang();
+  const { t, lang } = useLang();
 
   const [identity, setIdentity] = useState<BidanIdentity | null>(null);
   const [record, setRecord] = useState<RegisterRecord | null>(null);
@@ -65,6 +66,9 @@ export default function KbPage() {
   const [values, setValues] = useState<KbFormValues>(EMPTY_KB);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  /* Asked once before a maternal form opens on somebody it cannot be
+     about — see components/PlausibilityGate. */
+  const [confirmed, setConfirmed] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -204,6 +208,18 @@ export default function KbPage() {
   }
 
   if (!identity || !record) return null;
+
+  if (!confirmed && needsPlausibilityCheck(record)) {
+    return (
+      <PlausibilityGate
+        record={record}
+        what={{ id: 'layanan KB', en: 'family planning' }}
+        isEN={lang === 'en'}
+        onContinue={() => setConfirmed(true)}
+        onBack={() => router.replace('/search')}
+      />
+    );
+  }
 
   if (saved) {
     return (

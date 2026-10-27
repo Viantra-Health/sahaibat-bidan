@@ -15,6 +15,7 @@ import LetterSheet from '@/components/LetterSheet';
 import { buildReferralLetter } from '@/lib/referralLetter';
 import { generateDeliveryFlags, shouldReferDelivery } from '@sahaibat/anc-engine';
 import { useLang } from '@/lib/lang';
+import { PlausibilityGate, needsPlausibilityCheck } from '@/components/PlausibilityGate';
 import { C } from '@/components/ui';
 
 /** Weeks of a 40-week pregnancy at a given date, from EDD. */
@@ -30,13 +31,16 @@ export default function DeliveryPage() {
   const router = useRouter();
   // From the path here, or from ?m= on the static route — see lib/memberId.ts.
   const memberId = useMemberId();
-  const { t } = useLang();
+  const { t, lang } = useLang();
 
   const [identity, setIdentity] = useState<BidanIdentity | null>(null);
   const [record, setRecord] = useState<RegisterRecord | null>(null);
   const [values, setValues] = useState<DeliveryFormValues>(EMPTY_DELIVERY);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<{ refer: boolean; urgency: string; babies: number; unanswered: number } | null>(null);
+  /* Asked once before a delivery record opens on somebody it cannot be
+     about — see components/PlausibilityGate. */
+  const [confirmed, setConfirmed] = useState(false);
   const [notFound, setNotFound] = useState(false);
   /* The letter is shown on screen, not just handed to the share sheet. On a
      phone with no share target and no clipboard the old call fell through to
@@ -124,6 +128,18 @@ export default function DeliveryPage() {
   }
 
   if (!identity || !record) return null;
+
+  if (!confirmed && needsPlausibilityCheck(record)) {
+    return (
+      <PlausibilityGate
+        record={record}
+        what={{ id: 'catatan persalinan', en: 'a delivery record' }}
+        isEN={lang === 'en'}
+        onContinue={() => setConfirmed(true)}
+        onBack={() => router.replace('/search')}
+      />
+    );
+  }
 
   if (saved) {
     return (

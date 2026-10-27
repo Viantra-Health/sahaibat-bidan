@@ -15,6 +15,7 @@ import ReferralPanel from '@/components/ReferralPanel';
 import LetterSheet from '@/components/LetterSheet';
 import { generatePncFlags, shouldReferPnc, kfForDay } from '@sahaibat/anc-engine';
 import { useLang } from '@/lib/lang';
+import { PlausibilityGate, needsPlausibilityCheck } from '@/components/PlausibilityGate';
 import { daysBetween } from '@/lib/plausibility';
 import AppHeader from '@/components/AppHeader';
 import VisitHistory from '@/components/VisitHistory';
@@ -29,8 +30,11 @@ export default function PncVisitPage() {
   const [record, setRecord] = useState<RegisterRecord | null>(null);
   const [values, setValues] = useState<PncFormValues>(EMPTY_PNC);
   const [saving, setSaving] = useState(false);
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [saved, setSaved] = useState<{ refer: boolean; urgency: string } | null>(null);
+  /* Asked once before a maternal form opens on somebody it cannot be
+     about — see components/PlausibilityGate. */
+  const [confirmed, setConfirmed] = useState(false);
   const [notFound, setNotFound] = useState(false);
   /* The letter is shown on screen, not just handed to the share sheet. The
      share sheet does not exist on every handset, and the popup fallback is
@@ -159,6 +163,18 @@ export default function PncVisitPage() {
   }
 
   if (!identity || !record) return null;
+
+  if (!confirmed && needsPlausibilityCheck(record)) {
+    return (
+      <PlausibilityGate
+        record={record}
+        what={{ id: 'kunjungan nifas', en: 'a postnatal visit' }}
+        isEN={lang === 'en'}
+        onContinue={() => setConfirmed(true)}
+        onBack={() => router.replace('/search')}
+      />
+    );
+  }
 
   if (saved) {
     return (
