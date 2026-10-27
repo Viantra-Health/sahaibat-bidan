@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import {useRouter } from 'next/navigation';
+import { useMemberId } from '@/lib/memberId';
+import { recordHref } from '@/lib/offline-links';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
 import { referAfterSave } from '@/lib/referDecision';
 import { getRegisterRecord, getLocalDeliveryDate, type RegisterRecord } from '@/lib/offlineStore';
@@ -20,7 +22,8 @@ import { C } from '@/components/ui';
 
 export default function PncVisitPage() {
   const router = useRouter();
-  const { memberId } = useParams<{ memberId: string }>();
+  // From the path here, or from ?m= on the static route — see lib/memberId.ts.
+  const memberId = useMemberId();
 
   const [identity, setIdentity] = useState<BidanIdentity | null>(null);
   const [record, setRecord] = useState<RegisterRecord | null>(null);
@@ -222,7 +225,7 @@ export default function PncVisitPage() {
         /* The KBPP invitation. Only offered here, where she already has a
            member id — /pnc/baru is registering her and has none until the
            visit syncs, so that screen shows the window without the button. */
-        onStartKb={() => router.push(`/kb/${memberId}`)}
+        onStartKb={() => router.push(recordHref('kb', memberId))}
       />
     </main>
   );

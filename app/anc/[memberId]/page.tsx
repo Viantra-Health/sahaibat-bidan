@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import {useRouter } from 'next/navigation';
+import { useMemberId } from '@/lib/memberId';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
 import { referAfterSave } from '@/lib/referDecision';
 import { getRegisterRecord, type RegisterRecord } from '@/lib/offlineStore';
@@ -35,7 +36,8 @@ function weeksFromEdd(edd: string | null): string {
 
 export default function AncVisitPage() {
   const router = useRouter();
-  const { memberId } = useParams<{ memberId: string }>();
+  // From the path here, or from ?m= on the static route — see lib/memberId.ts.
+  const memberId = useMemberId();
 
   // Shown on screen rather than fired into the share sheet, which did
   // nothing visible on a device without one. See components/LetterSheet.tsx.

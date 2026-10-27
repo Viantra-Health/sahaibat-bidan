@@ -19,7 +19,8 @@
 // corrects the window.
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import {useRouter } from 'next/navigation';
+import { useMemberId } from '@/lib/memberId';
 import { getIdentity, type BidanIdentity } from '@/lib/auth';
 import { getRegisterRecord, getLocalDeliveryDate, type RegisterRecord } from '@/lib/offlineStore';
 import { saveKbVisit } from '@/lib/saveVisit';
@@ -42,7 +43,8 @@ import { todayLocal } from '@/lib/plausibility';
 
 export default function KbPage() {
   const router = useRouter();
-  const { memberId } = useParams<{ memberId: string }>();
+  // From the path here, or from ?m= on the static route — see lib/memberId.ts.
+  const memberId = useMemberId();
   const { t } = useLang();
 
   const [identity, setIdentity] = useState<BidanIdentity | null>(null);

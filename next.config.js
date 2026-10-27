@@ -55,7 +55,24 @@ const withPWA = require("@ducanh2912/next-pwa").default({
       { url: "/pnc/baru", revision: BUILD_REV },
       { url: "/kn/baru", revision: BUILD_REV },
       { url: "/offline", revision: BUILD_REV },
+      /* ── ONE DOCUMENT PER FLOW, SERVING EVERY MOTHER ───────────────────
+         /anc?m=<id> is the same screen as /anc/<id>, reached by a URL whose
+         path never changes — so it can be precached once and opened with no
+         signal for a mother who has never been opened before. The dynamic
+         /anc/<id> cannot be: it is server-rendered, there is no document for
+         it on the device, and a midwife tapping a mother in a field got the
+         browser's error page. See lib/memberId.ts. */
+      { url: "/anc", revision: BUILD_REV },
+      { url: "/pnc", revision: BUILD_REV },
+      { url: "/kn", revision: BUILD_REV },
+      { url: "/kb", revision: BUILD_REV },
+      { url: "/persalinan", revision: BUILD_REV },
     ],
+    /* THE QUERY IS NOT PART OF THE CACHE KEY. Workbox matches a precached entry
+       on the full URL, so /anc?m=abc would miss the precached /anc and the
+       whole scheme above would do nothing. `m` identifies the mother, not the
+       document — every one of them is served by the same page. */
+    ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^m$/],
     navigateFallbackDenylist: [/^\/api\//],
     runtimeCaching: [
       /* ── MATCHED ON THE PATH, BECAUSE WORKBOX MATCHES ON THE WHOLE URL ──

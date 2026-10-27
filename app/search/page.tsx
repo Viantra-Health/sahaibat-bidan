@@ -13,6 +13,7 @@ import QueueBanner from '@/components/QueueBanner';
 import { getRejectedVisits } from '@/lib/offlineStore';
 import { refreshTargets } from '@/lib/referralTargets';
 import { useLang } from '@/lib/lang';
+import { recordHref } from '@/lib/offline-links';
 import { onRegisterChanged } from '@/lib/registerBus';
 import { C } from '@/components/ui';
 
@@ -256,16 +257,23 @@ export default function SearchPage() {
             // A baby has no antenatal or postnatal visit of her own, so both
             // targets on her row are the same one rather than offering a
             // second action that cannot apply to her.
+            /* ── THE QUERY FORM, WHICH IS THE ONE THAT WORKS OFFLINE ────────
+               /anc?m=<id> is served by one statically rendered page the service
+               worker precaches; /anc/<id> is a dynamic route with no document
+               on the device, which is why tapping a mother with no signal gave
+               the browser's error page. Built through recordHref so the shape
+               is decided in one place and a screen added later cannot quietly
+               go back to the path form. */
             const primaryHref = isNewborn
-              ? `/kn/${record.memberId}`
+              ? recordHref('kn', record.memberId)
               : flow === 'nifas'
-                ? `/pnc/${record.memberId}`
-                : `/anc/${record.memberId}`;
+                ? recordHref('pnc', record.memberId)
+                : recordHref('anc', record.memberId);
             const second = isNewborn
-              ? { href: `/kn/${record.memberId}`,         label: t('Neonatal', 'Newborn') }
+              ? { href: recordHref('kn', record.memberId),         label: t('Neonatal', 'Newborn') }
               : record.isPregnant
-              ? { href: `/persalinan/${record.memberId}`, label: t('Lahir', 'Birth') }
-              : { href: `/pnc/${record.memberId}`,        label: t('Nifas', 'Postnatal') };
+              ? { href: recordHref('persalinan', record.memberId), label: t('Lahir', 'Birth') }
+              : { href: recordHref('pnc', record.memberId),        label: t('Nifas', 'Postnatal') };
             return (
               <div
               key={record.memberId}
@@ -352,7 +360,7 @@ export default function SearchPage() {
                   gets it the moment she has delivered. */}
               {!isNewborn && !record.isPregnant && (
                 <button
-                  onClick={() => router.push(`/kb/${record.memberId}`)}
+                  onClick={() => router.push(recordHref('kb', record.memberId))}
                   aria-label={`${t('Keluarga Berencana', 'Family planning')} — ${record.name}`}
                   style={{
                     width: 52, border: 'none', background: C.card2,

@@ -100,6 +100,36 @@ ok('...and the page rule carries it, not only the start url',
 ok('...and /offline is precached, so the fallback has something to serve',
   precached.has('/offline'))
 
+/* ── EVERY MOTHER OPENS OFFLINE, NOT ONLY ONE OPENED BEFORE ───────────────
+ * The record pages used to live only at /anc/<memberId> — a dynamic route, so
+ * server-rendered, so no document on the device. A midwife with no signal
+ * tapping a mother got the browser's error page while the register, the visit
+ * history and the engine all sat on the phone. The only missing thing was HTML.
+ *
+ * /anc?m=<id> is the same screen on a path that never changes, so ONE precached
+ * document serves every mother. These assertions are the three things that have
+ * to hold for that, and each of them is silent when it fails.
+ */
+import { RECORD_ROUTES } from '../lib/offline-links.ts'
+
+for (const r of RECORD_ROUTES) {
+  ok(`${r} is precached — one document for every mother`, precached.has(r),
+    [...precached].join(', '))
+}
+
+/* THE QUERY MUST NOT BE PART OF THE CACHE KEY, or /anc?m=abc misses the
+   precached /anc and the whole scheme above does nothing at all. */
+const ignore = /ignoreURLParametersMatching:\[([^\]]*)\]/.exec(sw)
+ok('the worker ignores URL parameters at all', !!ignore, 'no ignoreURLParametersMatching')
+ok('...and `m` is one of them — it names the mother, not the document',
+  !!ignore && /\^m\$/.test(ignore[1]), ignore?.[1] ?? '')
+
+/* And the old path form still resolves, because a URL that has been handed out
+   does not get to stop working. */
+ok('the dynamic routes are still built',
+  existsSync('.next/server/app/anc/[memberId].html')
+  || readFileSync('.next/app-path-routes-manifest.json', 'utf8').includes('/anc/[memberId]'))
+
 /* ── 5. the API must never be cached ────────────────────────────────────── */
 ok('API requests are excluded from the page rule', /\/api\//.test(sw));
 
