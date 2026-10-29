@@ -217,8 +217,17 @@ export function searchRegister(
  *  women called Siti, in the order a midwife reads them. */
 export function describeRecord(r: RegisterRecord, t: T = ID): string {
   const bits: string[] = [];
-  if (r.ageYears != null) bits.push(`${r.ageYears} ${t('th', 'yrs')}`);
+  /* ── A BABY IS NOT "0 th" ──────────────────────────────────────────────
+     Years win over months, which is right for everyone except the people
+     this app sees most. A newborn pushed from the clinic carries
+     age_years = 0 (the push door computes it from the date of birth), and a
+     newborn a midwife registered carries age_years null with the months — so
+     two babies the same age sat in one search result reading "0 th" and
+     "0 bln". Zero years is not an age, it is the absence of one, and the
+     months beside it are the real answer. */
+  if (r.ageYears != null && r.ageYears > 0) bits.push(`${r.ageYears} ${t('th', 'yrs')}`);
   else if (r.ageMonths != null) bits.push(`${r.ageMonths} ${t('bln', 'mo')}`);
+  else if (r.ageYears != null) bits.push(`${r.ageYears} ${t('th', 'yrs')}`);
   if (r.village) bits.push(r.village);
   if (r.motherName) bits.push(t(`anaknya ${r.motherName}`, `child of ${r.motherName}`));
   // HPL is what the Buku KIA calls it; EDD is what an English speaker expects.
