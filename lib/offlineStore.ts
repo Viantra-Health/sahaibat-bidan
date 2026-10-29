@@ -107,6 +107,15 @@ export interface RegisterRecord {
   village: string | null;
   subdistrict: string | null;
   motherName: string | null;
+  /* ── WHAT SHE WEIGHED AT BIRTH, ON A CHILD'S RECORD ───────────────────
+     The KN form asked for it with the placeholder "dari Buku KIA" every time,
+     including for a baby a clinic had delivered an hour earlier with the
+     number already in the register's own database. For a preterm baby it is
+     the figure the protocol turns on. Optional: a register fetched by an
+     older build has no such field, and absent must read as "not known". */
+  birthWeightGrams?: number | null;
+  birthLengthCm?: number | null;
+  birthHeadCircCm?: number | null;
   isPregnant: boolean;
   edd: string | null;
   /**

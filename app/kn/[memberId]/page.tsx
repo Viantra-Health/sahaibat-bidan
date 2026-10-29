@@ -68,6 +68,14 @@ export default function KnVisitPage() {
             visitType: knForDay(days) ?? 'KN3',
             birthDate: r.dob!,
             visitDate: today,
+            /* FILLED, NOT LOCKED. The register knows what the delivery
+               recorded; she is standing in front of the baby and the Buku KIA
+               and may know better, so this is a starting value she can type
+               over. Only filled when the register actually has one — a blank
+               field is honest, a zero is not. */
+            ...(r.birthWeightGrams != null ? { birthWeightGrams: String(r.birthWeightGrams) } : {}),
+            ...(r.birthLengthCm != null ? { lengthCm: String(r.birthLengthCm) } : {}),
+            ...(r.birthHeadCircCm != null ? { headCircCm: String(r.birthHeadCircCm) } : {}),
           }));
           return;
         }
