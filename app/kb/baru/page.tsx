@@ -89,33 +89,32 @@ export default function NewKbClientPage() {
 
   if (step === 'kb') {
     return (
-      <>
-        <div style={{ padding: '0 20px', maxWidth: 480, margin: '0 auto' }}>
-          <button onClick={() => setStep('who')} style={linkBtn}>
-            {t('← Ubah data klien', '← Edit her details')}
-          </button>
-        </div>
-        <KbRecord
-          identity={identity}
-          subject={{
-            /* Unresolved on purpose — the server matches her at sync. */
-            memberId: null,
+      /* The back link is handed to KbRecord rather than drawn here. Wrapping
+         the component in a div with its own link put that link ABOVE the app
+         header, outside the page's own column — caught in the browser, not by
+         the build. */
+      <KbRecord
+        identity={identity}
+        onBack={() => setStep('who')}
+        backLabel={t('← Ubah data klien', '← Edit her details')}
+        subject={{
+          /* Unresolved on purpose — the server matches her at sync. */
+          memberId: null,
+          name: name.trim(),
+          village: identity.village ?? null,
+          /* No delivery, so no KBPP window and no postpartum restriction. A
+             client who HAS delivered recently is reached from her own
+             register row, where the date is known. */
+          deliveryDate: null,
+          record: null,
+          registration: {
             name: name.trim(),
-            village: identity.village ?? null,
-            /* No delivery, so no KBPP window and no postpartum restriction.
-               A client who HAS delivered recently is reached from her own
-               register row, where the date is known. */
-            deliveryDate: null,
-            record: null,
-            registration: {
-              name: name.trim(),
-              dob: effectiveDob || null,
-              phone: normalisePhone(phone),
-              nik: isNikShapeValid(nik) ? nik.replace(/\D/g, '') : null,
-            },
-          }}
-        />
-      </>
+            dob: effectiveDob || null,
+            phone: normalisePhone(phone),
+            nik: isNikShapeValid(nik) ? nik.replace(/\D/g, '') : null,
+          },
+        }}
+      />
     );
   }
 

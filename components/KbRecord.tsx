@@ -81,9 +81,16 @@ export interface KbSubject {
   registration?: { name: string; dob: string | null; phone: string | null; nik: string | null } | null;
 }
 
-export default function KbRecord({ identity, subject }: {
+export default function KbRecord({ identity, subject, onBack, backLabel }: {
   identity: BidanIdentity;
   subject: KbSubject;
+  /* Where the FIRST stage's back link goes. router.back() is right for a
+     woman opened off the register — the previous page is the register. It is
+     wrong for /kb/baru, where the previous step is her details and was never
+     a navigation, so history would take the midwife out of the intake
+     altogether and lose what she typed. */
+  onBack?: () => void;
+  backLabel?: string;
 }) {
   const router = useRouter();
   const { t, lang } = useLang();
@@ -261,8 +268,8 @@ export default function KbRecord({ identity, subject }: {
       <>
         <AppHeader />
         <main style={{ padding: 20, maxWidth: 480, margin: '0 auto' }}>
-          <button onClick={() => router.back()} style={linkBtn}>
-            {t('← Kembali', '← Back')}
+          <button onClick={() => (onBack ? onBack() : router.back())} style={linkBtn}>
+            {backLabel ?? t('← Kembali', '← Back')}
           </button>
           <p style={{ fontSize: 13, color: C.dim, margin: '0 0 14px' }}>
             {name}{village ? ` · ${village}` : ''}
