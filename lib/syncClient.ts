@@ -113,7 +113,7 @@ async function runSync(): Promise<SyncResult> {
  * a newer field refetches once, immediately, and is then back on the normal
  * rhythm.
  */
-const REGISTER_SHAPE = '2026-10-29.birthWeight';
+const REGISTER_SHAPE = '2026-11-01.kbEpisode';
 
 /**
  * How long a downloaded register may be trusted.
