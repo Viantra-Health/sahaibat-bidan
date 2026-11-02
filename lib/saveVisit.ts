@@ -317,6 +317,21 @@ export async function saveKbVisit(args: {
    * each time it changed.
    */
   screening?: Record<string, unknown> | null;
+  /**
+   * Who she is, when the register does not know her yet.
+   *
+   * The same block /anc/baru sends, read by the same match ladder on arrival
+   * (NIK → phone → name-in-village). A family-planning intake is the fourth
+   * door into the register and deliberately not a fourth way to make a
+   * duplicate: the device never decides she is new, it says what it was told
+   * and the server decides.
+   *
+   * Omitted whenever memberId is set, which is every contact with a woman
+   * picked off the register.
+   */
+  registration?: {
+    name: string; dob: string | null; phone: string | null; nik: string | null;
+  } | null;
 }): Promise<QueuedVisit> {
   const { identity, memberId, motherName, values } = args;
   const facts = toKbFacts(values);
@@ -342,6 +357,10 @@ export async function saveKbVisit(args: {
       product: values.product || null,
       quantity: values.quantity || null,
       isBreastfeeding: values.isBreastfeeding,
+      /* Only when there is one — an absent key and a null one read the same
+         to the server, and sending `_register: null` on every ordinary
+         contact would put noise in every payload. */
+      ...(args.registration ? { _register: args.registration } : {}),
     },
     // There is no quality score for a family planning contact, and inventing
     // one would be reported as if it meant what the 10T score means.

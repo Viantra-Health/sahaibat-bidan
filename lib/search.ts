@@ -14,6 +14,7 @@
 import { nameSimilarity, normaliseName } from '@sahaibat/identity';
 import type { RegisterRecord } from './offlineStore';
 import { daysBetween, todayLocal, formatStoredDate } from './plausibility';
+import { kbMethod, isKnownMethod } from '@sahaibat/anc-engine';
 
 export interface SearchFilters {
   /** Her own village. Not a hard filter — a boost, so a neighbouring-village
@@ -232,6 +233,22 @@ export function describeRecord(r: RegisterRecord, t: T = ID): string {
   if (r.motherName) bits.push(t(`anaknya ${r.motherName}`, `child of ${r.motherName}`));
   // HPL is what the Buku KIA calls it; EDD is what an English speaker expects.
   if (r.isPregnant && r.edd) bits.push(`${t('HPL', 'EDD')} ${r.edd}`);
+  /* ── WHAT SHE IS ON ───────────────────────────────────────────────────
+     Without this a family-planning client's row reads "34 th · ATAMBUA" and
+     nothing on it says why she is in this list — which is how KB came to be
+     invisible except as a button. The method, not the fact of an episode:
+     "KB" alone tells a midwife nothing she cannot already guess.
+
+     A code the engine does not recognise is printed as given rather than
+     dropped. kbMethod() falls back to 'Lainnya' for an unknown, which would
+     quietly restate somebody's record as "Other". */
+  if (r.kb && !r.isPregnant) {
+    const code = r.kb.methodCode;
+    const m = code
+      ? (isKnownMethod(code) ? t(kbMethod(code).label_id, kbMethod(code).label_en) : String(code))
+      : t('KB — belum memilih cara', 'FP — no method chosen yet');
+    bits.push(m);
+  }
   if (r.nikLast4) bits.push(`NIK …${r.nikLast4}`);
   return bits.join(' · ');
 }
@@ -349,7 +366,7 @@ export function describeLastSeen(r: RegisterRecord, t: T = ID, locale = 'id-ID')
  * FILTER, listing a few women who do not need one is harmless; hiding one who
  * does is not. So the only thing excluded is who it cannot be.
  */
-export type CareFlow = 'anc' | 'persalinan' | 'nifas' | 'kn';
+export type CareFlow = 'anc' | 'persalinan' | 'nifas' | 'kn' | 'kb';
 
 export function careFlow(r: RegisterRecord): CareFlow | null {
   if (newbornDayOfLife(r) != null) return 'kn';
@@ -366,7 +383,37 @@ export function careFlow(r: RegisterRecord): CareFlow | null {
      record with no age recorded is kept, since the cost of dropping a mother
      from this list is worse than the cost of one extra row. */
   const isChild = (r.role ?? '') === 'anak' || (r.ageYears != null && r.ageYears < 10);
-  return isChild ? null : 'nifas';
+  if (isChild) return null;
+
+  /* ── A FAMILY-PLANNING CLIENT IS NOT A NIFAS MOTHER ────────────────────
+     'nifas' used to be the answer for every adult woman who was not pregnant,
+     because it was the only one left — so a woman on contraception two years
+     after her last birth led with a postnatal visit, and the KB button beside
+     it was the only correct thing on the row. Reported from the field.
+
+     An OPEN episode is a positive fact about her, not an absence, which is
+     why it can decide this at all.
+
+     IT DOES NOT OUTRANK A POSTNATAL PERIOD THAT IS STILL RUNNING. A mother
+     who chose a method three days after giving birth has an open episode AND
+     four KF visits still owed, and the postnatal visit is the one that is due.
+     So the window is checked first, from a delivery the register actually
+     knows about.
+
+     A delivery nobody recorded leaves deliveryDate null — the ordinary case
+     for a home birth — and she then reads as KB. Nothing is lost by that: the
+     row's second action is her postnatal visit, so this change reorders the
+     two and removes neither. */
+  if (r.kb && !withinPostnatal(r)) return 'kb';
+  return 'nifas';
+}
+
+/** Inside the 42 days, counted from a delivery the register knows about. */
+function withinPostnatal(r: RegisterRecord): boolean {
+  const d = String(r.deliveryDate ?? '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+  const days = (Date.parse(`${todayLocal()}T00:00:00Z`) - Date.parse(`${d}T00:00:00Z`)) / 86_400_000;
+  return Number.isFinite(days) && days >= 0 && days <= 42;
 }
 
 export function newbornDayOfLife(r: RegisterRecord): number | null {

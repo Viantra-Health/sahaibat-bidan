@@ -121,6 +121,7 @@ export default function SearchPage() {
             : flow === 'persalinan' ? t('Mendekati Persalinan', 'Near term')
             : flow === 'nifas' ? t('Ibu Nifas', 'Postnatal mothers')
             : flow === 'kn' ? t('Bayi Baru Lahir', 'Newborns')
+            : flow === 'kb' ? t('Klien KB', 'Family planning clients')
             : t('Daftar Pasien', 'Patient register')}
         </h1>
         <div style={{ fontSize: 12.5, color: C.dim }}>
@@ -159,7 +160,7 @@ export default function SearchPage() {
           label={identity.village ? `${t('Wilayah', 'Area')} ${identity.village}` : t('Wilayah saya', 'My area')} />
         {/* Tapping the active one clears it, so there is always a way back to
             the whole register without hunting for an "all" chip. */}
-        {(['anc', 'persalinan', 'nifas', 'kn'] as const).map((f) => (
+        {(['anc', 'persalinan', 'nifas', 'kn', 'kb'] as const).map((f) => (
           <Chip
             key={f}
             on={flow === f}
@@ -168,7 +169,8 @@ export default function SearchPage() {
               f === 'anc' ? t('Hamil', 'Pregnant')
               : f === 'persalinan' ? t('Mau lahir', 'Near term')
               : f === 'nifas' ? t('Nifas', 'Postnatal')
-              : t('Bayi', 'Newborn')
+              : f === 'kn' ? t('Bayi', 'Newborn')
+              : t('KB', 'Family planning')
             }
           />
         ))}
@@ -191,6 +193,26 @@ export default function SearchPage() {
       >
         <span style={{ fontSize: 17, lineHeight: 1 }}>+</span>
         {t('Daftarkan ibu baru', 'Register a new mother')}
+      </button>
+
+      {/* ── AND A CLIENT WHO IS NEITHER ─────────────────────────────────────
+          Quieter than the button above it because it is the less common door,
+          but it has to BE a door. A woman who comes for contraception while
+          not pregnant and not recently delivered had no way into the register
+          except to be filed as an antenatal or postnatal mother — a false
+          clinical record written to get past a missing route, and the reason
+          family planning was turning up under Nifas. */}
+      <button
+        onClick={() => router.push('/kb/baru')}
+        style={{
+          width: '100%', padding: '10px 14px', borderRadius: 11, marginBottom: 14,
+          background: C.card2, color: C.dim, fontWeight: 700, fontSize: 13.5,
+          border: `1px solid ${C.border}`, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        }}
+      >
+        <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
+        {t('Klien KB baru — tidak hamil, tidak nifas', 'New family planning client — not pregnant, not postnatal')}
       </button>
 
       {status && (
@@ -266,9 +288,18 @@ export default function SearchPage() {
                go back to the path form. */
             const primaryHref = isNewborn
               ? recordHref('kn', record.memberId)
-              : flow === 'nifas'
-                ? recordHref('pnc', record.memberId)
-                : recordHref('anc', record.memberId);
+              : flow === 'kb'
+                ? recordHref('kb', record.memberId)
+                : flow === 'nifas'
+                  ? recordHref('pnc', record.memberId)
+                  : recordHref('anc', record.memberId);
+            /* ── A KB CLIENT'S ROW LEADS WITH KB, AND STILL OFFERS NIFAS ───
+               careFlow() can only call her 'kb' when her postnatal period is
+               not running, so leading with family planning is right. The
+               postnatal action stays beside it rather than being removed: a
+               delivery nobody recorded leaves the register with no date, and
+               that is the ordinary case for a birth at home. This reorders
+               the two; it takes nothing away. */
             const second = isNewborn
               ? { href: recordHref('kn', record.memberId),         label: t('Neonatal', 'Newborn') }
               : record.isPregnant
@@ -358,7 +389,7 @@ export default function SearchPage() {
                   Not on a newborn, and not on a pregnant woman: for her the
                   question is the delivery, and KBPP opens after it. Her row
                   gets it the moment she has delivered. */}
-              {!isNewborn && !record.isPregnant && (
+              {!isNewborn && !record.isPregnant && flow !== 'kb' && (
                 <button
                   onClick={() => router.push(recordHref('kb', record.memberId))}
                   aria-label={`${t('Keluarga Berencana', 'Family planning')} — ${record.name}`}

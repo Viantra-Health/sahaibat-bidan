@@ -182,6 +182,31 @@ export interface RegisterRecord {
     fasilitas: string | null; transportasi: string | null; donorDarah: string | null;
     pendanaan: string | null; pendamping: string | null; catatan: string | null;
   } | null;
+  /**
+   * Her OPEN family-planning episode, where she has one.
+   *
+   * ── WHY A ROW NEEDS THIS ──────────────────────────────────────────────
+   *
+   * careFlow() decides what a row is for from three facts — newborn,
+   * pregnant, or neither — and "neither" had to mean nifas, because it was
+   * the only answer left. So a woman on contraception years after her last
+   * birth read as a postnatal mother and her row led with a nifas visit. The
+   * KB button beside it was the only part that was right, and the register
+   * carried nothing that could have said otherwise.
+   *
+   * An OPEN episode is the fact. An ended one is not: she stopped, and the
+   * row should go back to saying whatever else is true of her.
+   *
+   * Optional, because a register fetched by an older build has no such field
+   * and absent must read as "not known" rather than "no".
+   */
+  kb?: {
+    episodeId: string;
+    methodCode: string | null;
+    counselledAt: string | null;
+    startedAt: string | null;
+    followUpDue: string | null;
+  } | null;
   nikLast4: string | null;
   phoneLast4: string | null;
   lastSeenAt: string | null;

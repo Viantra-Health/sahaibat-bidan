@@ -54,6 +54,12 @@ const withPWA = require("@ducanh2912/next-pwa").default({
       { url: "/anc/baru", revision: BUILD_REV },
       { url: "/pnc/baru", revision: BUILD_REV },
       { url: "/kn/baru", revision: BUILD_REV },
+      /* The family-planning intake, for a client who is neither pregnant nor
+         postnatal. Added with the route — this list is explicit, so a new
+         static page is NOT precached by being built, and the comment above
+         describes what that costs: a button on the register screen with no
+         document to serve offline. */
+      { url: "/kb/baru", revision: BUILD_REV },
       { url: "/offline", revision: BUILD_REV },
       /* ── ONE DOCUMENT PER FLOW, SERVING EVERY MOTHER ───────────────────
          /anc?m=<id> is the same screen as /anc/<id>, reached by a URL whose
