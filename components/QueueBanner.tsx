@@ -268,6 +268,33 @@ function whyRefused(r: any): { id: string; en: string } | null {
     };
   }
 
+  /* ── A PARENT ROW THAT IS NOT THERE ──────────────────────────────────────
+     Added alongside sql/phase-49, which gives the older field tables the
+     foreign keys the newer ones always had. That is the right fix — a visit
+     attributable to no midwife and no NGO could be written before it — but it
+     turns a silent bad write into a REFUSAL, and a refusal is something a
+     midwife reads. Without this she would get
+     "insert or update on table ... violates foreign key constraint
+      sahai_pnc_visits_bidan_id_fkey", which is the same unreadable Postgres
+     sentence the overflow used to produce.
+
+     She cannot fix this one herself, and the message says so rather than
+     sending her back to the form to look for a number that is not wrong. */
+  if (/violates foreign key constraint/i.test(err)) {
+    const who = /bidan_id/i.test(err)
+      ? { id: 'akun bidan', en: "the midwife's account" }
+      : /ngo_id/i.test(err)
+        ? { id: 'organisasi', en: 'the organisation' }
+        : /family_id|member_id/i.test(err)
+          ? { id: 'data keluarga', en: 'the family record' }
+          : null;
+    return who
+      ? { id: `${who.id} tidak dikenali server — hubungi koordinator Anda`,
+          en: `${who.en} is not recognised by the server — contact your coordinator` }
+      : { id: 'ada data yang tidak dikenali server — hubungi koordinator Anda',
+          en: 'something here is not recognised by the server — contact your coordinator' };
+  }
+
   // Not a constraint we have a sentence for. Show what the server said.
   const short = err.length > 120 ? `${err.slice(0, 117)}…` : err;
   return { id: short, en: short };
