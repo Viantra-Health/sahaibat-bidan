@@ -51,6 +51,32 @@ export default function ConfirmWarnings({
   const { t } = useLang();
   const willBeLost = items.some((w) => w.willBeRefused);
 
+  /* ── NAME WHAT IS ACTUALLY DROPPED ───────────────────────────────────────
+     This button said "Simpan tanpa usia kehamilan" whatever it was about to
+     clear, because the only field that could reach it was the antenatal one.
+     Once the nifas and neonatal forms could refuse a value too, a midwife
+     entering 368 °C was offered "save without the gestational age" — on a
+     postnatal form, which has none, for a button that clears her thermometer
+     reading. The one control in this dialog that discards something has to
+     say what. */
+  const FIELD_NAMES: Record<string, [string, string]> = {
+    gestationalWeeks: ['usia kehamilan', 'gestational age'],
+    temperatureC: ['suhu', 'temperature'],
+    babyWeightKg: ['berat bayi', 'baby weight'],
+    weightGrams: ['berat', 'weight'],
+    birthWeightGrams: ['berat lahir', 'birth weight'],
+  };
+  const dropping = items.filter((w) => w.willBeRefused);
+  const named = dropping.map((w) => FIELD_NAMES[w.field]).filter(Boolean) as Array<[string, string]>;
+  /* Two refused fields is one sentence, not two buttons: they are cleared
+     together, so they are named together. An unrecognised field falls back to
+     "angka itu" rather than naming the wrong one. */
+  const dropped = named.length === 0
+    ? { id: 'angka itu', en: 'that number' }
+    : named.length === 1
+      ? { id: named[0][0], en: named[0][1] }
+      : { id: named.map((n) => n[0]).join(' dan '), en: named.map((n) => n[1]).join(' and ') };
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 50,
@@ -108,8 +134,8 @@ export default function ConfirmWarnings({
             border: `1px solid ${C.teal}`, cursor: saving ? 'default' : 'pointer',
             marginBottom: 10,
           }}>
-            {t('Simpan tanpa usia kehamilan — sisanya tetap tersimpan',
-               'Save without the gestational age — everything else is kept')}
+            {t(`Simpan tanpa ${dropped.id} — sisanya tetap tersimpan`,
+               `Save without the ${dropped.en} — everything else is kept`)}
           </button>
         )}
         <button onClick={onConfirm} disabled={saving} style={{
