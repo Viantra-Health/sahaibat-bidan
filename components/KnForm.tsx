@@ -25,9 +25,11 @@
 // delivery record in the system — born before the app arrived, or born
 // elsewhere. So birth weight is askable here and read off the Buku KIA.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { generateKnFlags, shouldReferKn, knForDay } from '@sahaibat/anc-engine';
 import { C, Section, Row, Hint, Field, Select, Tri } from './ui';
+import { checkKn } from '@/lib/plausibility';
+import ConfirmWarnings from '@/components/ConfirmWarnings';
 import { useLang, flagMessage } from '@/lib/lang';
 
 export interface KnFormValues {
@@ -169,6 +171,18 @@ export default function KnForm({ babyName, subtitle, values, onChange, onSave, s
   // doorstep. Up to 10% is physiological; past it is a feeding problem.
   const w = toGrams(values.weightGrams);
   const bw = toGrams(values.birthWeightGrams);
+
+  /* ── BEFORE THE SERVER REFUSES IT ────────────────────────────────────────
+     temperature_c is numeric(3,1), so a thermometer reading typed without its
+     decimal point cannot be stored at all — the same refusal TPMB Sehati hit
+     on a nifas visit, 16 Nov 2026. The weights go through toGrams first, or a
+     correctly entered "3,1" would be read as a 3-gram baby. */
+  const implausible = useMemo(() => checkKn({
+    temperatureC: values.temperatureC,
+    weightGrams: w, birthWeightGrams: bw,
+    lengthCm: values.lengthCm, headCircCm: values.headCircCm,
+  }), [values.temperatureC, w, bw, values.lengthCm, values.headCircCm]);
+  const [askingValues, setAskingValues] = useState(false);
   const lostPct = (w != null && bw != null && bw > 0 && w < bw)
     ? ((bw - w) / bw) * 100 : null;
 
@@ -369,7 +383,25 @@ export default function KnForm({ babyName, subtitle, values, onChange, onSave, s
                 ? t('DARURAT', 'EMERGENCY') : t('segera', 'urgent')})
             </div>
           )}
-          <button onClick={onSave} disabled={saving} style={{
+          {implausible.length > 0 && (
+            <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
+              {implausible.map((x, i) => (
+                <div key={i} style={{
+                  fontSize: 12.5, lineHeight: 1.45, borderRadius: 9, padding: '8px 10px',
+                  background: x.willBeRefused ? '#FDEAE8' : '#FBF1DC',
+                  border: `1px solid ${x.willBeRefused ? '#B3261E' : '#8A5D06'}`,
+                  color: x.willBeRefused ? '#B3261E' : '#8A5D06',
+                  fontWeight: x.willBeRefused ? 600 : 400,
+                }}>{t(x.id, x.en)}</div>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={() => {
+              if (implausible.some((x) => !x.notice) && !askingValues) setAskingValues(true);
+              else onSave();
+            }}
+            disabled={saving} style={{
             width: '100%', padding: 15, fontSize: 15.5, fontWeight: 700, borderRadius: 11,
             background: saving ? C.accentMuted : C.teal,
             color: saving ? C.dim : C.onAccent, border: 'none', cursor: saving ? 'default' : 'pointer',
@@ -378,6 +410,33 @@ export default function KnForm({ babyName, subtitle, values, onChange, onSave, s
           </button>
         </div>
       </div>
+
+      {/* Clearing the one unstorable field beats losing the danger signs, the
+          immunisations and the weight along with it — see ConfirmWarnings. */}
+      {askingValues && (
+        <ConfirmWarnings
+          items={implausible}
+          saving={saving}
+          onCancel={() => setAskingValues(false)}
+          onSaveWithout={
+            implausible.some((x) => x.willBeRefused)
+              ? () => {
+                  setAskingValues(false);
+                  const cleared = { ...values };
+                  for (const x of implausible) {
+                    if (!x.willBeRefused) continue;
+                    if (x.field === 'temperatureC') cleared.temperatureC = '';
+                    if (x.field === 'weightGrams') cleared.weightGrams = '';
+                    if (x.field === 'birthWeightGrams') cleared.birthWeightGrams = '';
+                  }
+                  onChange(cleared);
+                  setTimeout(onSave, 0);
+                }
+              : undefined
+          }
+          onConfirm={() => { setAskingValues(false); onSave(); }}
+        />
+      )}
     </div>
   );
 }

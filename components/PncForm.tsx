@@ -19,12 +19,14 @@
 // server and the WhatsApp path use — so a fever raises RUJUK SEGERA while the
 // thermometer is still in her hand.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { generatePncFlags, shouldReferPnc, kfForDay, KBPP_DAYS } from '@sahaibat/anc-engine';
 import { C, Section, Row, Hint, Field, Select, Tri } from './ui';
 import { useLang, flagMessage } from '@/lib/lang';
 import ReferralFollowUp from './ReferralFollowUp';
 import { followUpQuestion, type OpenReferral, type ArrivalAnswer } from '@/lib/referral-followup';
+import { checkPnc } from '@/lib/plausibility';
+import ConfirmWarnings from '@/components/ConfirmWarnings';
 
 export interface PncFormValues {
   /* ── THE REFERRAL SHE MADE, ANSWERED ─────────────────────────────────────
@@ -129,6 +131,21 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
 
   const days = num(values.daysPostpartum);
   const suggestedKf = days != null ? kfForDay(days) : null;
+
+  /* ── BEFORE THE SERVER REFUSES IT ────────────────────────────────────────
+     A temperature or a baby weight too large for its column comes back as
+     `numeric field overflow`, which is permanent: a rejected visit is never
+     retried, so it sits on the handset until somebody retypes it. The
+     antenatal form has guarded this since the thermometer note in
+     lib/plausibility.ts; this one never did, and TPMB Sehati lost a KF1 to it
+     on 16 Nov 2026. */
+  const implausible = useMemo(() => checkPnc({
+    temperatureC: values.temperatureC, babyWeightKg: values.babyWeightKg,
+    bpSystolic: values.bpSystolic, bpDiastolic: values.bpDiastolic,
+    epdsScore: values.epdsScore,
+  }), [values.temperatureC, values.babyWeightKg, values.bpSystolic,
+       values.bpDiastolic, values.epdsScore]);
+  const [askingValues, setAskingValues] = useState(false);
 
   /* ── THE KBPP WINDOW, ON THE SCREEN WHERE SHE IS SITTING ────────────────
      KBPP is contraception started within 42 days of delivery, and it is the
@@ -400,7 +417,25 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
                 ? t('DARURAT', 'EMERGENCY') : t('segera', 'urgent')})
             </div>
           )}
-          <button onClick={onSave} disabled={saving} style={{
+          {implausible.length > 0 && (
+            <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
+              {implausible.map((w, i) => (
+                <div key={i} style={{
+                  fontSize: 12.5, lineHeight: 1.45, borderRadius: 9, padding: '8px 10px',
+                  background: w.willBeRefused ? '#FDEAE8' : '#FBF1DC',
+                  border: `1px solid ${w.willBeRefused ? '#B3261E' : '#8A5D06'}`,
+                  color: w.willBeRefused ? '#B3261E' : '#8A5D06',
+                  fontWeight: w.willBeRefused ? 600 : 400,
+                }}>{t(w.id, w.en)}</div>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={() => {
+              if (implausible.some((w) => !w.notice) && !askingValues) setAskingValues(true);
+              else onSave();
+            }}
+            disabled={saving} style={{
             width: '100%', padding: 15, fontSize: 15.5, fontWeight: 700, borderRadius: 11,
             background: saving ? C.accentMuted : C.teal,
             color: saving ? C.dim : C.onAccent, border: 'none', cursor: saving ? 'default' : 'pointer',
@@ -409,6 +444,39 @@ export default function PncForm({ motherName, subtitle, values, onChange, onSave
           </button>
         </div>
       </div>
+
+      {/* ── THE CONFIRMING TAP, AND THE WAY OUT ──────────────────────────────
+          Saving "as it is" with an over-range number loses the WHOLE visit:
+          the blood pressure, the bleeding, the breastfeeding, all of it, for
+          one mistyped field the server will not store. Six visits were lost
+          that way in a single antenatal test run, which is why the lesser
+          loss is offered by name here too — clear just the field the database
+          refuses and keep everything else. */}
+      {askingValues && (
+        <ConfirmWarnings
+          items={implausible}
+          saving={saving}
+          onCancel={() => setAskingValues(false)}
+          onSaveWithout={
+            implausible.some((w) => w.willBeRefused)
+              ? () => {
+                  setAskingValues(false);
+                  const cleared = { ...values };
+                  for (const w of implausible) {
+                    if (!w.willBeRefused) continue;
+                    if (w.field === 'temperatureC') cleared.temperatureC = '';
+                    if (w.field === 'babyWeightKg') cleared.babyWeightKg = '';
+                  }
+                  onChange(cleared);
+                  /* onChange is async for the parent, so the save is handed the
+                     cleared values on the next tick rather than this one. */
+                  setTimeout(onSave, 0);
+                }
+              : undefined
+          }
+          onConfirm={() => { setAskingValues(false); onSave(); }}
+        />
+      )}
     </div>
   );
 }

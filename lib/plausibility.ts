@@ -180,6 +180,160 @@ export function normaliseTime(raw: unknown): string | null {
   return `${p(h)}:${p(min)}:${p(sec)}`;
 }
 
+/* ── WHAT A numeric(p,s) COLUMN WILL REFUSE ───────────────────────────────
+   These two are not "this looks odd". They are the exact values that make
+   PostgreSQL answer `numeric field overflow` (SQLSTATE 22003), which the
+   server returns verbatim and QueueBanner then shows to a midwife who has no
+   way to act on it. Reported by TPMB Sehati, 16 Nov 2026: a KF1 for one
+   mother refused, with those three words and nothing else.
+
+   A 22003 is PERMANENT. `getRetryableVisits` already excludes a rejected
+   visit for exactly this reason, so an over-range number is not a hiccup that
+   clears itself -- it is a visit that never reaches the record until somebody
+   retypes it. Catching it here is the difference between fixing a digit while
+   the mother is still in front of her and losing the visit.
+
+   WHY THESE TWO FIELDS AND NO OTHERS. sahai_pnc_visits holds exactly two
+   numeric columns, and both were MEASURED against production rather than
+   guessed, because the DDL predates the migrations folder and no file in any
+   repo defines them:
+
+     temperature      numeric(3,1)   must be < 100   -> 368 for 36,8 overflows
+     baby_weight_kg   numeric(4,2)   must be < 100   -> 3200 grams overflows
+
+   Every other number on the form is an integer, which fails differently and
+   far higher. The nifas and neonatal forms never got the guard the antenatal
+   form has had since the thermometer note below, despite asking the same two
+   questions -- and antenatal's temperature_c is numeric(4,1), so the very same
+   typo that is merely implausible there is UNSTORABLE here. */
+const TEMP_MIN = 30, TEMP_MAX = 45;
+
+/** A temperature typed without its decimal point: 36,8 entered as 368. */
+function temperatureProblem(temp: number): { id: string; en: string } | null {
+  if (temp >= TEMP_MIN && temp <= TEMP_MAX) return null;
+  /* The likely typo is named, because "368" is one keystroke from correct and
+     a midwife reading "out of range" still has to work out which way. */
+  const hint = temp > 100 ? ` Mungkin maksud Anda ${(temp / 10).toFixed(1)}.` : '';
+  const hintEn = temp > 100 ? ` You may have meant ${(temp / 10).toFixed(1)}.` : '';
+  return {
+    id: `Suhu ${temp}\u00b0C tidak masuk akal.${hint} Kunjungan ini akan DITOLAK server.`,
+    en: `A temperature of ${temp}\u00b0C cannot be right.${hintEn} The server will REFUSE this visit.`,
+  };
+}
+
+/** A baby weighed in grams into a field that wants kilograms: 3200 for 3,2. */
+function babyWeightProblem(kg: number): { id: string; en: string } | null {
+  if (kg >= 0.3 && kg <= 10) return null;
+  const hint = kg > 100 ? ` Mungkin maksud Anda ${(kg / 1000).toFixed(1)} kg.` : '';
+  const hintEn = kg > 100 ? ` You may have meant ${(kg / 1000).toFixed(1)} kg.` : '';
+  return {
+    id: `Berat bayi ${kg} kg tidak masuk akal.${hint} Isi dalam kilogram, bukan gram. Kunjungan ini akan DITOLAK server.`,
+    en: `A baby weight of ${kg} kg cannot be right.${hintEn} Enter kilograms, not grams. The server will REFUSE this visit.`,
+  };
+}
+
+/**
+ * The nifas form, before the server sees it.
+ *
+ * Deliberately narrow: only what the database will actually refuse, plus the
+ * blood-pressure pair that is a typo in any reading. Everything else a midwife
+ * writes about a postpartum mother is her clinical judgement and not this
+ * function's business -- see the note in ConfirmWarnings about a prompt that
+ * nags being a prompt she learns to tap through.
+ */
+export function checkPnc(v: {
+  temperatureC?: unknown; babyWeightKg?: unknown;
+  bpSystolic?: unknown; bpDiastolic?: unknown; epdsScore?: unknown;
+}): Implausible[] {
+  const out: Implausible[] = [];
+  const temp = n(v.temperatureC), kg = n(v.babyWeightKg);
+  const sys = n(v.bpSystolic), dia = n(v.bpDiastolic), epds = n(v.epdsScore);
+
+  if (temp !== null) {
+    const p = temperatureProblem(temp);
+    if (p) out.push({ field: 'temperatureC', willBeRefused: true, ...p });
+  }
+  if (kg !== null) {
+    const p = babyWeightProblem(kg);
+    if (p) out.push({ field: 'babyWeightKg', willBeRefused: true, ...p });
+  }
+
+  /* Integer columns: wrong, but they do not overflow, so they are a warning
+     rather than a refusal and must not claim the server will say no. */
+  if (sys !== null && (sys < 60 || sys > 260)) out.push({ field: 'bpSystolic',
+    id: `Tekanan darah sistolik ${sys} tidak masuk akal.`,
+    en: `A systolic pressure of ${sys} cannot be right.` });
+  if (dia !== null && (dia < 30 || dia > 180)) out.push({ field: 'bpDiastolic',
+    id: `Tekanan darah diastolik ${dia} tidak masuk akal.`,
+    en: `A diastolic pressure of ${dia} cannot be right.` });
+  if (sys !== null && dia !== null && dia >= sys) out.push({ field: 'bpDiastolic',
+    id: 'Diastolik tidak boleh sama atau lebih tinggi dari sistolik.',
+    en: 'The diastolic cannot be the same as or higher than the systolic.' });
+
+  /* EPDS is scored out of 30. A 10-question scale cannot exceed it, and the
+     engine refers at >=10, so a mistyped 100 would refer every mother. */
+  if (epds !== null && (epds < 0 || epds > 30)) out.push({ field: 'epdsScore',
+    id: `Skor EPDS ${epds} di luar 0-30.`,
+    en: `An EPDS score of ${epds} is outside 0-30.` });
+
+  return out;
+}
+
+/**
+ * The neonatal form, before the server sees it.
+ *
+ * Column shapes from sql/phase-9a-kn.sql, read rather than assumed:
+ *
+ *   temperature_c       numeric(3,1)                     -> 368 OVERFLOWS
+ *   length_cm           numeric(4,1)   < 1000            -> 355 fits
+ *   head_circ_cm        numeric(4,1)   < 1000            -> 355 fits
+ *   weight_grams        integer  check between 200..15000
+ *   birth_weight_grams  integer  check between 200..7000
+ *
+ * The distinction is load-bearing. A length in millimetres is WRONG but the
+ * database will happily store it, so saying "the server will REFUSE this" of a
+ * 355 would be a threat that never arrives — and a red box that cries wolf is
+ * one she learns to tap through, which is the behaviour ConfirmWarnings exists
+ * to avoid. Only the three the database actually refuses claim a refusal.
+ */
+export function checkKn(v: {
+  temperatureC?: unknown;
+  /** ALREADY IN GRAMS. Callers pass toGrams(...), never the raw field: the
+      form accepts "3,1" and means 3100, so checking the typed string would
+      report a 3-gram baby on a correctly filled form. */
+  weightGrams?: unknown;
+  birthWeightGrams?: unknown;
+  lengthCm?: unknown; headCircCm?: unknown;
+}): Implausible[] {
+  const out: Implausible[] = [];
+  const temp = n(v.temperatureC);
+  const g = n(v.weightGrams), bg = n(v.birthWeightGrams);
+  const len = n(v.lengthCm), head = n(v.headCircCm);
+
+  if (temp !== null) {
+    const p = temperatureProblem(temp);
+    if (p) out.push({ field: 'temperatureC', willBeRefused: true, ...p });
+  }
+
+  /* The CHECK constraints refuse these, so the warning may promise it. */
+  if (g !== null && (g < 200 || g > 15000)) out.push({ field: 'weightGrams', willBeRefused: true,
+    id: `Berat ${g} gram di luar 200-15.000 g. Kunjungan ini akan DITOLAK server.`,
+    en: `A weight of ${g} g is outside 200-15,000 g. The server will REFUSE this visit.` });
+  if (bg !== null && (bg < 200 || bg > 7000)) out.push({ field: 'birthWeightGrams', willBeRefused: true,
+    id: `Berat lahir ${bg} gram di luar 200-7.000 g. Kunjungan ini akan DITOLAK server.`,
+    en: `A birth weight of ${bg} g is outside 200-7,000 g. The server will REFUSE this visit.` });
+
+  /* numeric(4,1) holds these, so they are a warning and say so quietly. */
+  if (len !== null && (len < 20 || len > 70)) out.push({ field: 'lengthCm',
+    id: `Panjang ${len} cm tidak masuk akal. Isi dalam sentimeter.`,
+    en: `A length of ${len} cm cannot be right. Enter centimetres.` });
+  if (head !== null && (head < 20 || head > 60)) out.push({ field: 'headCircCm',
+    id: `Lingkar kepala ${head} cm tidak masuk akal. Isi dalam sentimeter.`,
+    en: `A head circumference of ${head} cm cannot be right. Enter centimetres.` });
+
+  return out;
+}
+
 export function checkDelivery(v: {
   gestationalWeeks?: unknown; bloodLossMl?: unknown; deliveryDate?: unknown;
   deliveryTime?: unknown;

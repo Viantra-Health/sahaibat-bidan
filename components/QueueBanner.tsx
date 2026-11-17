@@ -218,6 +218,56 @@ function whyRefused(r: any): { id: string; en: string } | null {
     };
   }
 
+  /* ── A NUMBER TOO BIG FOR ITS COLUMN ─────────────────────────────────────
+     PostgreSQL answers `numeric field overflow` (SQLSTATE 22003) and names NO
+     column, so the rule at the top of this function has to work the other way
+     round here: the VALUES decide which field to talk about, because the error
+     cannot. Reported by TPMB Sehati on 16 Nov 2026 as three English words on a
+     midwife's screen with nothing to act on.
+
+     lib/plausibility.ts stops these at the form now. This stays for the visits
+     already sitting rejected on a device — they were recorded before the guard
+     existed and nothing else will ever explain them. */
+  if (/numeric field overflow/i.test(err)) {
+    const d = (r?.data ?? {}) as Record<string, unknown>;
+    const num = (x: unknown) => {
+      const v = Number(String(x ?? '').replace(',', '.'));
+      return Number.isFinite(v) ? v : null;
+    };
+    const temp = num(d.temperatureC);
+    const kg = num(d.babyWeightKg);
+    const len = num(d.lengthCm);
+    const head = num(d.headCircCm);
+
+    if (temp !== null && (temp < 30 || temp > 45)) {
+      return {
+        id: `suhu ${temp}°C terlalu besar untuk disimpan — mungkin ${(temp / 10).toFixed(1)}`,
+        en: `a temperature of ${temp}°C is too large to store — perhaps ${(temp / 10).toFixed(1)}`,
+      };
+    }
+    if (kg !== null && (kg < 0.3 || kg > 10)) {
+      return {
+        id: `berat bayi ${kg} terlalu besar — isi dalam kilogram, bukan gram`,
+        en: `a baby weight of ${kg} is too large — enter kilograms, not grams`,
+      };
+    }
+    if (len !== null && (len < 20 || len > 70)) {
+      return { id: `panjang ${len} cm terlalu besar untuk disimpan`,
+               en: `a length of ${len} cm is too large to store` };
+    }
+    if (head !== null && (head < 20 || head > 60)) {
+      return { id: `lingkar kepala ${head} cm terlalu besar untuk disimpan`,
+               en: `a head circumference of ${head} cm is too large to store` };
+    }
+    /* Nothing on the form is out of range, so the cause is a field this build
+       does not know about. Say that it is a number and that it is permanent —
+       never invent which one. */
+    return {
+      id: 'ada angka yang terlalu besar untuk disimpan — periksa suhu dan berat',
+      en: 'a number is too large to store — check the temperature and the weight',
+    };
+  }
+
   // Not a constraint we have a sentence for. Show what the server said.
   const short = err.length > 120 ? `${err.slice(0, 117)}…` : err;
   return { id: short, en: short };
